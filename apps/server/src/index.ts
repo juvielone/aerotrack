@@ -44,7 +44,7 @@ function openSse(reply: FastifyReply, onClose: () => void) {
 app.get('/api/config', async () => ({
   center: [env.lon, env.lat],
   radiusNm: env.radiusNm,
-  live: { enabled: env.liveEnabled, source: env.provider.label, pollSeconds: env.pollSeconds },
+  live: { enabled: env.liveEnabled, source: live.provider.label, pollSeconds: env.pollSeconds },
   airports: AIRPORTS,
   lowCoverage: coverage.lowCellPolygons(),
   speeds: SPEEDS,
