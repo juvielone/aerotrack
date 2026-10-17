@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.log
+.env
+.DS_Store
+# Recordings can be large; share demo recordings separately (manifest.json is tracked)
+data/recordings/*.ndjson

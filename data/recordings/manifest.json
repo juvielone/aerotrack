@@ -1,0 +1,14 @@
+[
+  {
+    "id": "syd-2026-10-18-morning",
+    "title": "Sydney morning traffic, 18 Oct 2026",
+    "file": "syd-2026-10-18-morning.ndjson",
+    "date": "2026-10-17T21:04:25.506Z",
+    "source": "adsb.fi",
+    "kind": "live-capture",
+    "center": [
+      151.1772,
+      -33.9461
+    ]
+  }
+]
