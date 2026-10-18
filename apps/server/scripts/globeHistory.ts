@@ -97,12 +97,24 @@ function readHeader(buf: Buffer, at: number): { name: string; size: number; type
   };
 }
 
+/** First valid header in `buf`, which starts at global offset `base` (headers sit on 512-byte archive boundaries). */
+function firstHeader(buf: Buffer, base: number): ({ at: number } & NonNullable<ReturnType<typeof readHeader>>) | null {
+  for (let at = (512 - (base % 512)) % 512; at + 512 <= buf.length; at += 512) {
+    const h = readHeader(buf, at);
+    if (h) return { at, ...h };
+  }
+  return null;
+}
+
 export interface LayoutPoint {
-  /** Global offset of a tar header. */
+  /** Global offset of a tar header, or of the sample itself when it landed inside a large file. */
   offset: number;
-  /** Top-level directory and sub-directory, e.g. "traces/45". */
+  /** Top-level directory and sub-directory, e.g. "traces/45"; INSIDE_FILE when the sample saw no header. */
   dir: string;
 }
+
+/** A sample that fell inside one large file (some days start with a ~600 MB file before the traces). */
+const INSIDE_FILE = '?';
 
 /** Samples the archive to find which directory each region belongs to (~900 small requests per day). */
 export async function probeLayout(parts: ArchivePart[]): Promise<LayoutPoint[]> {
@@ -118,14 +130,11 @@ export async function probeLayout(parts: ArchivePart[]): Promise<LayoutPoint[]> 
       if (o === undefined) return;
       const buf = await fetchRange(parts, o, Math.min(o + PROBE_BYTES, total));
       // Headers sit on 512-byte boundaries of the whole archive (each part is a multiple of 512 bytes).
-      for (let at = (512 - (o % 512)) % 512; at + 512 <= buf.length; at += 512) {
-        const h = readHeader(buf, at);
-        if (h) {
-          const segs = clean(h.name).split('/');
-          points.push({ offset: o + at, dir: segs.slice(0, Math.min(2, segs.length - (h.type === '5' ? 0 : 1))).join('/') });
-          break;
-        }
-      }
+      const h = firstHeader(buf, o);
+      if (h) {
+        const segs = clean(h.name).split('/');
+        points.push({ offset: o + h.at, dir: segs.slice(0, Math.min(2, segs.length - (h.type === '5' ? 0 : 1))).join('/') });
+      } else points.push({ offset: o, dir: INSIDE_FILE });
       if (++done % 100 === 0) console.log(`[archive] mapped ${done} of ${count} samples…`);
     }
   };
@@ -133,9 +142,14 @@ export async function probeLayout(parts: ArchivePart[]): Promise<LayoutPoint[]> 
   return points.sort((a, b) => a.offset - b.offset);
 }
 
+/** The directory walk downloads this much at a time, and hops over larger files by reading only their headers. */
+const WALK_CHUNK = 2 * 1024 * 1024;
+const mb = (bytes: number) => (bytes / 1e6).toFixed(1);
+
 /**
- * Downloads only the region holding `dir` (from the sample before its first sighting to the sample after its last)
- * and returns every file in it that `match` accepts, by name.
+ * Reads only the region holding `dir` and returns every file in it that `match` accepts, by name.
+ * The walk goes header to header from the last header sample before the directory to the first one after it,
+ * so a huge file inside the region (some days have a ~600 MB one) costs one small request instead of a download.
  */
 export async function fetchFromDirectory(
   parts: ArchivePart[],
@@ -149,21 +163,38 @@ export async function fetchFromDirectory(
   const out = new Map<string, Buffer>();
   if (!hits.length) return out;
   const total = parts.reduce((n, p) => n + p.size, 0);
-  const first = hits[0];
-  const last = hits[hits.length - 1];
-  const start = layout[Math.max(0, first - 1)].offset;
-  const end = last + 1 < layout.length ? layout[last + 1].offset + PROBE_BYTES : total;
-  console.log(`[archive] downloading ${dir}: ${((end - start) / 1e6).toFixed(1)} MB`);
-  const buf = await fetchRange(parts, start, end);
-  // `start` is a known header; walk header to header.
-  let at = 0;
-  while (at + 512 <= buf.length) {
-    const h = readHeader(buf, at);
-    if (!h) break;
-    const dataEnd = at + 512 + h.size;
-    if ((h.type === '0' || h.type === '\0') && dataEnd <= buf.length && match(h.name)) out.set(clean(h.name), buf.subarray(at + 512, dataEnd));
-    at += 512 + Math.ceil(h.size / 512) * 512;
+  // Samples that landed inside a file may belong to this directory, so look past them for real boundaries.
+  let s = hits[0] - 1;
+  while (s > 0 && layout[s].dir === INSIDE_FILE) s--;
+  let e = hits[hits.length - 1] + 1;
+  while (e < layout.length && layout[e].dir === INSIDE_FILE) e++;
+  const start = s >= 0 ? layout[s].offset : 0;
+  const end = e < layout.length ? layout[e].offset : total;
+  console.log(`[archive] reading ${dir} between ${mb(start)} and ${mb(end)} MB, skipping large files`);
+
+  let pos = start; // always a header offset
+  let buf: Buffer = Buffer.alloc(0);
+  let bufStart = pos;
+  let fetched = 0;
+  while (pos < end) {
+    if (pos < bufStart || pos + 512 > bufStart + buf.length) {
+      buf = await fetchRange(parts, pos, Math.min(pos + WALK_CHUNK, total));
+      bufStart = pos;
+      fetched += buf.length;
+    }
+    const h = readHeader(buf, pos - bufStart);
+    if (!h) break; // end of archive
+    const dataStart = pos + 512;
+    const dataEnd = dataStart + h.size;
+    if ((h.type === '0' || h.type === '\0') && match(h.name)) {
+      const inBuf = dataEnd <= bufStart + buf.length;
+      const data = inBuf ? buf.subarray(dataStart - bufStart, dataEnd - bufStart) : await fetchRange(parts, dataStart, dataEnd);
+      if (!inBuf) fetched += data.length;
+      out.set(clean(h.name), Buffer.from(data));
+    }
+    pos = dataStart + Math.ceil(h.size / 512) * 512;
   }
+  console.log(`[archive] read ${mb(fetched)} MB`);
   return out;
 }
 

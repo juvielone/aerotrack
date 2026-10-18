@@ -13,7 +13,7 @@
 // --expect checks that Aerotrack itself detects that pattern in the snippet, and refuses to write otherwise.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { airlineName, airlinePrefix, analyseFlight, Pipeline, type FlightPoint, type InsightType } from '@aerotrack/core';
+import { airlineName, airlinePrefix, analyseFlight, Pipeline, selectInsight, type FlightPoint, type InsightType } from '@aerotrack/core';
 import { env } from '../src/env';
 import { SPEEDS } from '../src/replay';
 import { archiveParts, fetchArchivedTrace } from './globeHistory';
@@ -79,7 +79,11 @@ if (opts.expect) {
     p.ingest(poll);
     for (const s of p.store.current()) {
       if (focus) break;
-      if (analyseFlight({ events: s.events, signal: p.signal(s, poll.now, false) }, poll.now).some((i) => i.type === expect)) focus = { hex: s.hex, ts: poll.now };
+      // Focus on the moment the Insights panel would actually show it (after its show gate), not first detection.
+      const shown = analyseFlight({ events: s.events, signal: p.signal(s, poll.now, false) }, poll.now).some(
+        (i) => i.type === expect && selectInsight([i], poll.now) !== null,
+      );
+      if (shown) focus = { hex: s.hex, ts: poll.now };
     }
     if (focus) break;
   }
