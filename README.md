@@ -66,6 +66,7 @@ When you select an airliner, a **dashed violet line** runs from the aircraft to 
 | `AEROTRACK_RADIUS_NM` | `250` | Poll radius |
 | `AEROTRACK_POLL_SECONDS` | `5` | Poll interval (min 5) |
 | `AEROTRACK_LIVE` | `true` | `false` = offline, recorded-only server |
+| `AEROTRACK_CONTACT` | team email | Contact in the User-Agent for Planespotters photo requests (their API requires one); never sent to the browser |
 | `AEROTRACK_SHOW_CAPTURES` | `false` | `true` = also list captures in the Recorded tab (normally only the demo example flights) |
 | `PORT` / `HOST` | `8787` / `127.0.0.1` | Server bind |
 
@@ -95,6 +96,7 @@ When positions stop arriving, the signal-lost logic distinguishes three cases: *
 - Aircraft data: [ADSB.lol](https://adsb.lol) (ODbL), or [adsb.fi](https://adsb.fi) when selected. The active source is named on the map and in the badge.
 - Map: [OpenFreeMap](https://openfreemap.org) © OpenMapTiles, data © OpenStreetMap contributors. Offline basemap: Natural Earth (public domain).
 - Planned routes: ADSB.lol routeset, or [ADSBdb](https://www.adsbdb.com) as fallback (credited on the map while a route is shown).
+- Aircraft photos: [Planespotters.net](https://www.planespotters.net), with the photographer credited and linked on each photo. Shown only when the selected aircraft has one, and only with internet.
 - No Flightradar24 data or UI is used.
 
 ## Known limitations

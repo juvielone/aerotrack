@@ -57,6 +57,7 @@ export function FlightPanel() {
       </div>
 
       <div className="panel-body">
+        <AircraftPhotoBlock hex={a?.hex ?? d?.session.hex ?? ''} reg={a?.reg ?? d?.session.reg ?? null} />
         <RouteRow />
 
         {d ? <Insight detail={d} a={a} now={now} /> : <div className="insight skeleton">Loading flight history…</div>}
@@ -95,6 +96,41 @@ export function FlightPanel() {
         </footer>
       </div>
     </aside>
+  );
+}
+
+/** Photo of this aircraft from Planespotters.net, always credited and linked. Hidden when there is none. */
+function AircraftPhotoBlock({ hex, reg }: { hex: string; reg: string | null }) {
+  const photo = useStore((s) => s.photo);
+  const [failed, setFailed] = useState<string | null>(null);
+  if (!hex) return null;
+  const loading = !photo || photo.hex !== hex;
+  if (!loading && (!photo.photo || failed === photo.photo.src)) return null;
+  const p = loading ? null : photo.photo!;
+  return (
+    <figure className="ac-photo">
+      <div className={`ac-photo-frame${p ? '' : ' skeleton'}`}>
+        {p && (
+          <img
+            key={p.src}
+            src={p.src}
+            width={p.width}
+            height={p.height}
+            loading="lazy"
+            alt={`${reg ?? hex.toUpperCase()}, photo by ${p.photographer}`}
+            onError={() => setFailed(p.src)}
+          />
+        )}
+      </div>
+      {p && (
+        <figcaption>
+          <a href={p.link} target="_blank" rel="noreferrer">
+            Photo © {p.photographer} · Planespotters.net
+          </a>
+          <span>Photo of this aircraft, not necessarily this flight</span>
+        </figcaption>
+      )}
+    </figure>
   );
 }
 

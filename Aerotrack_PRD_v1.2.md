@@ -130,7 +130,8 @@ When positions stop arriving, Aerotrack distinguishes three cases instead of one
 ### Still cut
 
 - Metadata-only flight preview and second metadata provider (ADSBdb).
-- Mixed live/sample view, aircraft photos, airport search, filter persistence, polished bottom sheet.
+- Mixed live/sample view, airport search, filter persistence, polished bottom sheet.
+- ~~Aircraft photos~~: added 18 Oct 2026 via the Planespotters.net API, photographer credited and linked on each photo.
 - 3D view.
 - The full Reddit research log (replaced by 3–5 linked posts on one slide).
 
@@ -141,6 +142,7 @@ When positions stop arriving, Aerotrack distinguishes three cases instead of one
 - Use one backend poll shared by all clients to respect rate limits. Keep keys out of client code.
 - Recorded mode must run fully offline. Assume the venue Wi-Fi will fail.
 - Incident examples sourced from news or Reddit: link the source, and use ADSB.lol archive data for the track itself.
+- Aircraft photos come from Planespotters.net: credit the photographer and link to the photo page on every photo; don't store or alter images. Their API needs a contact in the server's User-Agent (`AEROTRACK_CONTACT`). Photos need internet, so they're absent in a fully offline demo.
 
 ## 8. Demo script
 

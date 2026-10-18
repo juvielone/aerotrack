@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { aircraftClass, airlinePrefix, routePlausible, type AircraftSummary, type FlightRoute, type SessionDetail } from '@aerotrack/core';
-import { getJSON, sessionUrl, type AppConfig, type RecordingInfo, type ReplayState, type StreamSnapshot } from './api';
+import { getJSON, sessionUrl, type AircraftPhoto, type AppConfig, type RecordingInfo, type ReplayState, type StreamSnapshot } from './api';
 import { useStore } from './store';
 
 /** Loads server config and the recordings list once. */
@@ -103,6 +103,31 @@ export function useSelectedDetail() {
         l.inFlight = false;
       });
   }, [selectedId, snapshotNow, mode, replayId, set]);
+}
+
+/** Looks up a photo of the selected aircraft once per hex (Planespotters.net, via our server). */
+export function useSelectedPhoto() {
+  const hex = useStore((s) => s.snapshot?.aircraft.find((a) => a.sessionId === s.selectedId)?.hex ?? (s.detail?.session.id === s.selectedId ? s.detail?.session.hex : null) ?? null);
+  const set = useStore((s) => s.set);
+  useEffect(() => {
+    if (!hex) return;
+    if (useStore.getState().photo?.hex === hex) return;
+    set({ photo: null });
+    const st = useStore.getState();
+    const reg = st.snapshot?.aircraft.find((a) => a.hex === hex)?.reg ?? st.detail?.session.reg;
+    let stale = false;
+    getJSON<{ photo: AircraftPhoto | null }>(`/api/photo/${encodeURIComponent(hex)}${reg ? `?reg=${encodeURIComponent(reg)}` : ''}`)
+      .then((r) => {
+        if (!stale) set({ photo: { hex, photo: r.photo } });
+      })
+      .catch(() => {
+        // No photo is fine; the panel simply doesn't show one.
+        if (!stale) set({ photo: { hex, photo: null } });
+      });
+    return () => {
+      stale = true;
+    };
+  }, [hex, set]);
 }
 
 /** Looks up the selected flight's planned route once per callsign (not on every snapshot). */

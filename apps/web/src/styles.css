@@ -1168,3 +1168,44 @@ code {
   background: var(--accent);
   pointer-events: none;
 }
+
+.ac-photo {
+  margin: 0;
+}
+.ac-photo-frame {
+  aspect-ratio: 3 / 2;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.ac-photo-frame.skeleton {
+  background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 50%, var(--surface) 100%);
+  background-size: 200% 100%;
+  animation: ac-photo-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes ac-photo-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ac-photo-frame.skeleton { animation: none; }
+}
+.ac-photo-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ac-photo figcaption {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.ac-photo figcaption a {
+  color: var(--text-2);
+}

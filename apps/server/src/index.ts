@@ -6,6 +6,7 @@ import { AIRPORTS, CoverageModel, routePlausible, type CoverageGrid } from '@aer
 import { env } from './env';
 import { RouteService } from './flightRoutes';
 import { LiveFeed } from './live';
+import { PhotoService } from './photos';
 import { demoRecordings, getRecording } from './recordings';
 import { Replay, SPEEDS } from './replay';
 
@@ -20,6 +21,7 @@ const coverage = loadCoverage();
 const live = new LiveFeed(coverage);
 const replays = new Map<string, Replay>();
 const routes = new RouteService();
+const photos = new PhotoService();
 
 const app = Fastify({ logger: false });
 
@@ -79,6 +81,13 @@ app.get<{ Params: { callsign: string }; Querystring: { lat?: string; lon?: strin
   const route = await routes.lookup(req.params.callsign, lat, lon);
   const plausible = route && lat !== undefined && lon !== undefined ? routePlausible(route, lat, lon) : route !== null;
   return { route, plausible };
+});
+
+// ---- Aircraft photos (Planespotters.net, credited in the panel) ---------------
+
+app.get<{ Params: { hex: string }; Querystring: { reg?: string } }>('/api/photo/:hex', async (req) => {
+  if (!/^~?[0-9a-f]{6}$/i.test(req.params.hex)) return { photo: null };
+  return { photo: await photos.lookup(req.params.hex, req.query.reg).catch(() => null) };
 });
 
 // ---- Recorded ---------------------------------------------------------------

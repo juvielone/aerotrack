@@ -17,6 +17,15 @@ export interface Highlight {
   hex?: string;
 }
 
+/** A Planespotters.net photo of an aircraft, with what is needed to credit it. */
+export interface AircraftPhoto {
+  src: string;
+  width: number;
+  height: number;
+  link: string;
+  photographer: string;
+}
+
 export interface RecordingInfo {
   id: string;
   title: string;

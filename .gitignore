@@ -7,3 +7,5 @@ dist/
 data/recordings/*.ndjson
 # Raw archive traces cached by import:trace --hex/--date
 data/recordings/trace_full_*.json
+# Photo details cache (photos need internet anyway)
+data/photo-cache.json
