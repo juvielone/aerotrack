@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl, { type GeoJSONSource, type Map as MLMap, type StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { greatCircle, type AircraftSummary, type SessionDetail } from '@aerotrack/core';
+import { greatCircle, ICON_SCALE, iconClass, type AircraftSummary, type IconClass, type SessionDetail } from '@aerotrack/core';
 import { useDrawableRoute, useVisibleAircraft } from '../hooks';
 import { MAP_COLOR } from '../format';
 import { useStore } from '../store';
-import { planeImage } from './planeIcon';
+import { ICON_SHAPES, iconImage } from './planeIcon';
 
 const ONLINE_STYLE = 'https://tiles.openfreemap.org/styles/dark';
 
@@ -37,7 +37,10 @@ async function pickStyle(): Promise<{ style: string | StyleSpecification; offlin
 
 /** Our layers on top of whichever basemap is active. Re-run after every style change. */
 function addOverlay(map: MLMap, cfg: { airports: GeoJSON.FeatureCollection; lowCoverage: GeoJSON.FeatureCollection }) {
-  if (!map.hasImage('plane')) map.addImage('plane', planeImage(64), { sdf: true, pixelRatio: 2 });
+  // One silhouette per aircraft family, e.g. 'ac-wide', 'ac-turboprop', 'ac-helicopter'.
+  for (const cls of Object.keys(ICON_SHAPES) as IconClass[]) {
+    if (!map.hasImage(`ac-${cls}`)) map.addImage(`ac-${cls}`, iconImage(cls, 64), { sdf: true, pixelRatio: 2 });
+  }
   for (const id of ['coverage', 'airports', 'route-line', 'route-airports', 'track', 'gaps', 'glitches', 'events', 'aircraft']) {
     if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: empty() });
   }
@@ -80,7 +83,7 @@ function addOverlay(map: MLMap, cfg: { airports: GeoJSON.FeatureCollection; lowC
     type: 'symbol',
     source: 'aircraft',
     layout: {
-      'icon-image': 'plane',
+      'icon-image': ['get', 'icon'],
       'icon-size': ['get', 'size'],
       'icon-rotate': ['get', 'track'],
       'icon-rotation-alignment': 'map',
@@ -109,6 +112,7 @@ function aircraftFeatures(list: AircraftSummary[], selectedId: string | null): G
     features: list.map((a) => {
       const selected = a.sessionId === selectedId;
       const color = selected ? MAP_COLOR.selected : a.signal.stale ? MAP_COLOR.stale : (sevColor(a) ?? MAP_COLOR.aircraft);
+      const cls = iconClass(a);
       return {
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [a.lon, a.lat] },
@@ -116,7 +120,8 @@ function aircraftFeatures(list: AircraftSummary[], selectedId: string | null): G
           id: a.sessionId,
           track: a.track ?? 0,
           color,
-          size: selected ? 1.15 : a.onGround ? 0.6 : 0.85,
+          icon: `ac-${cls}`,
+          size: ICON_SCALE[cls] * (selected ? 1.15 : a.onGround ? 0.6 : 0.85),
           opacity: a.signal.stale ? 0.55 : 1,
           z: selected ? 1000 : a.severityRank * 10 + (a.onGround ? 0 : 1),
         },

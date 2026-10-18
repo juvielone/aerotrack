@@ -17,3 +17,4 @@ export { selectInsight, evidenceLine, type InsightSelection } from './insights/s
 export { searchFlights, candidateCallsigns, type SearchResult } from './search';
 export { routePlausible, greatCircle, type FlightRoute, type RouteAirport } from './route';
 export { aircraftClass, airlinesSeen, CLASS_LABEL, type AircraftClass, type AirlineOption } from './filters';
+export { iconClass, ICON_SCALE, type IconClass, type IconInput } from './iconClass';
