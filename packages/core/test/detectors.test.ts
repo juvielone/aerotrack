@@ -79,6 +79,20 @@ describe('rapid descent', () => {
     expect(ev.some((e) => e.type === 'descent')).toBe(false);
   });
 
+  it('detects a long emergency descent that is never steep for 30 s (large-descent rule)', () => {
+    // Synthetic: ~3,200 fpm for 8 min (37,000 → ~11,400 ft), baro_rate wobbling between -3,500 and -4,800.
+    const obs = series(100, 5, (k) => ({ alt: 37000 - k * 267, baroRate: k % 3 === 0 ? -4800 : -3500 }));
+    const rapid = detectEvents(obs, ctx()).filter((e) => e.type === 'rapid-descent');
+    expect(rapid).toHaveLength(1);
+    expect(Math.abs(rapid[0].evidence.rateFpm!)).toBeGreaterThanOrEqual(3000);
+    expect(has(obs, 'descent')).toBe(false); // reported once
+  });
+
+  it('does not flag a brisk but normal descent (~2,800 fpm for 10 min) as rapid', () => {
+    const obs = series(120, 5, (k) => ({ alt: 36000 - k * 233, baroRate: -2800 }));
+    expect(has(obs, 'rapid-descent')).toBe(false);
+  });
+
   it('does not flag a normal descent (~1,800 fpm) as rapid', () => {
     // Synthetic: typical descent from cruise.
     const obs = series(60, 5, (k) => ({ alt: 30000 - k * 150, baroRate: -1800 }));

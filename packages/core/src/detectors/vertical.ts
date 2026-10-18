@@ -67,10 +67,23 @@ export function detectClimbDescent(obs: Observation[], rates: (number | null)[])
 }
 
 /**
- * Rapid descent (PRD §4): faster than ~5,000 fpm across ≥ 3 consistent observations for ≥ 30 s,
- * losing at least `minLossFt` of real altitude. Glitch-rejected readings are skipped, so this runs on the cleaned series.
+ * Rapid descent (PRD §4), either of:
+ * - steep: faster than ~5,000 fpm across ≥ 3 consistent observations for ≥ 30 s, losing at least `minLossFt`;
+ * - large: ≥ `largeLossFt` lost within `largeWindowSec` at ≥ `largeMinAvgFpm` on average (a long emergency descent
+ *   that is never steep for 30 s straight, e.g. a depressurisation descent at ~3,200 fpm for 8 min).
+ * Overlapping episodes are reported once. Glitch-rejected readings are skipped, so this runs on the cleaned series.
  */
 export function detectRapidDescent(obs: Observation[], rates: (number | null)[]): Detected[] {
+  const out: Detected[] = [...steepDescents(obs, rates)];
+  for (const d of largeDescents(obs)) {
+    const i = out.findIndex((e) => e.startTs <= d.endTs && e.endTs >= d.startTs);
+    if (i < 0) out.push(d);
+    else out[i] = mergeDescents(out[i], d, obs);
+  }
+  return out.sort((a, b) => a.startTs - b.startTs);
+}
+
+function steepDescents(obs: Observation[], rates: (number | null)[]): Detected[] {
   const { rateFpm, minObs, minSec, minLossFt } = config.rapidDescent;
   const out: Detected[] = [];
   let runStart = -1;
@@ -118,4 +131,65 @@ export function detectRapidDescent(obs: Observation[], rates: (number | null)[])
   }
   flush();
   return out;
+}
+
+/** Large sustained altitude loss within a short window (see detectRapidDescent). Never bridges a data gap. */
+function largeDescents(obs: Observation[]): Detected[] {
+  const { largeLossFt, largeWindowSec, largeMinAvgFpm, largeMaxGapSec } = config.rapidDescent;
+  const pts = airborneIdx(obs);
+  const episodes: [number, number][] = [];
+  let runStart = 0;
+  for (let b = 0; b < pts.length; b++) {
+    if (b > 0 && obs[pts[b]].ts - obs[pts[b - 1]].ts > largeMaxGapSec * 1000) runStart = b;
+    for (let a = runStart; a < b; a++) {
+      const durMs = obs[pts[b]].ts - obs[pts[a]].ts;
+      if (durMs > largeWindowSec * 1000) continue;
+      const lost = (obs[pts[a]].alt as number) - (obs[pts[b]].alt as number);
+      if (lost >= largeLossFt && lost / (durMs / 60000) >= largeMinAvgFpm) {
+        const last = episodes[episodes.length - 1];
+        if (last && a <= last[1]) last[1] = b;
+        else episodes.push([a, b]);
+        break;
+      }
+    }
+  }
+  return episodes.map(([a, b]) => descentEvent(obs, pts[a], pts[b], b - a + 1));
+}
+
+function airborneIdx(obs: Observation[]): number[] {
+  const out: number[] = [];
+  obs.forEach((o, i) => {
+    if (!o.onGround && o.alt !== null && !o.glitch) out.push(i);
+  });
+  return out;
+}
+
+function descentEvent(obs: Observation[], from: number, to: number, count: number): Detected {
+  const a = obs[from];
+  const b = obs[to];
+  const min = (b.ts - a.ts) / 60000;
+  return {
+    type: 'rapid-descent',
+    severity: 'warning',
+    startTs: a.ts,
+    endTs: b.ts,
+    ongoing: to === obs.length - 1,
+    evidence: {
+      startTs: a.ts,
+      endTs: b.ts,
+      startAlt: a.alt,
+      endAlt: b.alt,
+      rateFpm: -Math.round(((a.alt as number) - (b.alt as number)) / min),
+      durationSec: sec(b.ts - a.ts),
+      obsCount: count,
+    },
+  };
+}
+
+/** One episode covering both, with evidence recomputed over the combined window. */
+function mergeDescents(x: Detected, y: Detected, obs: Observation[]): Detected {
+  const from = obs.findIndex((o) => o.ts === Math.min(x.startTs, y.startTs));
+  const to = obs.findIndex((o) => o.ts === Math.max(x.endTs, y.endTs));
+  const count = obs.slice(from, to + 1).filter((o) => !o.onGround && o.alt !== null && !o.glitch).length;
+  return descentEvent(obs, from, to, count);
 }

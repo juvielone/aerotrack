@@ -55,6 +55,13 @@ export const config = {
     minSec: 30,
     /** Real altitude lost across the run, on the glitch-cleaned series (teammate reference). */
     minLossFt: 2500,
+    /** Large-descent rule (added 18 Oct 2026): this much lost within largeWindowSec at ≥ largeMinAvgFpm on average.
+     *  A normal descent from cruise (~1,500–2,000 fpm) loses at most ~10,000 ft in 5 min and averages below 3,000. */
+    largeLossFt: 10000,
+    largeWindowSec: 5 * 60,
+    largeMinAvgFpm: 3000,
+    /** The large-descent window never spans a data gap longer than this. */
+    largeMaxGapSec: 120,
   },
   glitch: {
     /** Implied vertical rate above this is physically implausible. */

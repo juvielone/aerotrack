@@ -53,7 +53,7 @@ The explainer is deterministic and rule-based, and runs on timestamped observati
 | Sustained climb / descent | ±1,000 ft over ≥ 60 s and ≥ 4 obs, or sustained \|`baro_rate`\| > 500 fpm | "The aircraft is descending. This often happens on approach, but the data doesn't confirm why." |
 | Sustained turn | Cumulative track change ≥ 30° within 90 s; ignore < 5° per sample; handle 359°/1° wraparound | "The aircraft is changing direction, possibly as part of its route." |
 | Possible holding / circling | Cumulative track change ≥ 300° within ~6 min, roughly level altitude | "Appears to be circling. Aircraft often do this in a holding pattern while waiting to land, but the data alone can't confirm it." |
-| Rapid descent | > ~5,000 fpm across ≥ 3 consistent obs for ≥ 30 s | "Descending unusually quickly (~6,000 ft/min). This can happen for several reasons, and the data doesn't show which." |
+| Rapid descent | > ~5,000 fpm across ≥ 3 consistent obs for ≥ 30 s, **or** ≥ 10,000 ft lost within 5 min at ≥ 3,000 fpm average (added 18 Oct 2026 for long emergency descents, e.g. a depressurisation at ~3,200 fpm for 8 min) | "Descending unusually quickly (~6,000 ft/min). This can happen for several reasons, and the data doesn't show which." |
 | Go-around (new) | See 4.2 | "The aircraft descended towards the runway, then climbed away and landed on a later approach. This is called a go-around and is a routine procedure." |
 | Emergency squawk 7700 | `squawk` 7700 or `emergency` = `general` | "This aircraft is transmitting a general emergency code (7700)." Fact only. No cause stated. |
 | Radio failure squawk 7600 (new) | `squawk` 7600 or `emergency` = `nordo` | "This aircraft is transmitting code 7600, which signals a loss of radio communication." Fact only. |
