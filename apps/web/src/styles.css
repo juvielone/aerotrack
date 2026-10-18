@@ -752,27 +752,6 @@ code {
   gap: 14px;
 }
 
-.signal {
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-}
-.signal strong {
-  font-size: 13px;
-}
-.signal p {
-  margin: 4px 0 0;
-  color: var(--text-2);
-  font-size: 13px;
-}
-.signal-unexpected {
-  border-color: rgba(251, 191, 36, 0.45);
-}
-.signal-feed {
-  border-color: rgba(248, 113, 113, 0.45);
-}
-
 .insight {
   padding: 12px 14px;
   border-radius: var(--radius);
@@ -802,6 +781,34 @@ code {
 .insight p {
   margin: 0;
   color: var(--text-2);
+}
+.insight .insight-explain {
+  margin-top: 6px;
+}
+.insight .insight-limits {
+  margin-top: 6px;
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+.insight-recent {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border-2);
+  color: var(--text-2);
+  letter-spacing: 0.03em;
+}
+.insight-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12.5px;
+}
+.insight-evidence {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
 }
 .insight-notice {
   border-color: rgba(251, 191, 36, 0.5);
