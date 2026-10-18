@@ -10,13 +10,16 @@ interface Step {
   d: number;
 }
 
-/** Track changes between consecutive airborne observations, not bridging data gaps. */
+/**
+ * Track changes between consecutive airborne observations, not bridging data gaps. Below `minTrackGsKt` the track
+ * is noise (landing roll, taxi when the feed never reports "ground"), so those points break the run like no track.
+ */
 function steps(obs: Observation[], staleSec: number): Step[][] {
   const runs: Step[][] = [];
   let cur: Step[] = [];
   let prev: Observation | null = null;
   obs.forEach((o, i) => {
-    if (o.onGround || o.track === null) {
+    if (o.onGround || o.track === null || (o.gs !== null && o.gs < config.turn.minTrackGsKt)) {
       if (cur.length) runs.push(cur);
       cur = [];
       prev = null;

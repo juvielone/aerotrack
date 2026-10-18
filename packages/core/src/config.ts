@@ -35,6 +35,8 @@ export const config = {
     noiseDeg: 5,
     /** A run of turning survives straight segments up to this long. */
     maxStraightSec: 30,
+    /** Below this ground speed the track is noise and is ignored (nothing holds or circles this slowly). */
+    minTrackGsKt: 40,
   },
   holding: {
     minDeg: 300,
