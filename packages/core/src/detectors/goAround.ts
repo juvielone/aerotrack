@@ -6,7 +6,9 @@ import { type Detected, sec } from './common';
 /**
  * Go-around (PRD §4.2): an approach segment near an airport (descending, below ~2,000 ft above the airport,
  * approach speed), followed by a climb of ≥ ~1,000 ft with no ground observation in between.
- * Confirmed only once a later landing is observed in the same session, so a normal departure is never mislabelled.
+ * Confirmed only once a later landing is observed in the same session (a ground observation, or slower than
+ * `landedMaxGsKt` below `landedMaxAglFt` when ground reports are missing), so a normal departure is never mislabelled.
+ * The airport is the nearest one within `nearAirportKm`; the planned destination isn't known here.
  * Unconfirmed candidates are returned as 'go-around-hint' only when `showHint` is set.
  */
 export function detectGoArounds(obs: Observation[], rates: (number | null)[], staleSec: number, showHint: boolean): Detected[] {
@@ -48,7 +50,8 @@ export function detectGoArounds(obs: Observation[], rates: (number | null)[], st
     }
     if (ap.startAlt - ap.minAlt >= g.minApproachDescentFt && o.alt - ap.minAlt >= g.climbFt) {
       // Climbed away from the approach without touching down. Confirm with a later landing.
-      const landing = obs.findIndex((x, n) => n > i && x.onGround);
+      const elevFt = ap.elevFt;
+      const landing = obs.findIndex((x, n) => n > i && (x.onGround || landedBySpeed(x, elevFt)));
       const low = obs[ap.minIdx];
       const confirmed = landing > 0;
       if (confirmed || showHint) {
@@ -77,4 +80,10 @@ export function detectGoArounds(obs: Observation[], rates: (number | null)[], st
     }
   }
   return out;
+}
+
+/** Slow and very low near the airport: a landing even when the feed never reports "ground". */
+function landedBySpeed(o: Observation, elevFt: number): boolean {
+  const g = config.goAround;
+  return o.alt !== null && !o.glitch && o.gs !== null && o.gs < g.landedMaxGsKt && o.alt - elevFt <= g.landedMaxAglFt;
 }

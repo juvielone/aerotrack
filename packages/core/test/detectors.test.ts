@@ -141,14 +141,19 @@ describe('holding / circling', () => {
 
 describe('go-around', () => {
   const nearSyd = { lat: SYD.lat - 0.06, lon: SYD.lon };
-  const approachThenClimb = (land: boolean) =>
+  const approachThenClimb = (land: boolean, groundReports = true) =>
     path(land ? 90 : 50, 5, (k) => {
       if (k < 20) return { alt: 2000 - k * 75, gs: 150, track: 0, baroRate: -900 }; // down to ~575 ft
       if (k < 40) return { alt: 575 + (k - 19) * 150, gs: 170, track: 0, baroRate: 1800 }; // up to ~3,575 ft
       if (k < 50) return { alt: 3500, gs: 180, track: 180 };
       if (k < 85) return { alt: Math.max(100, 3500 - (k - 50) * 100), gs: 150, track: 0, baroRate: -1200 };
-      return { onGround: true, alt: null, gs: 40, track: 0 };
+      return groundReports ? { onGround: true, alt: null, gs: 40, track: 0 } : { alt: 100, gs: 45, track: 0, baroRate: 0 };
     }, nearSyd);
+
+  it('confirms a landing from low speed near the runway when no ground reports arrive', () => {
+    // Synthetic: the feed never sends alt_baro "ground"; the rollout is only seen as 45 kt at 100 ft.
+    expect(has(approachThenClimb(true, false), 'go-around')).toBe(true);
+  });
 
   it('confirms only after a later landing', () => {
     expect(has(approachThenClimb(true), 'go-around')).toBe(true);
