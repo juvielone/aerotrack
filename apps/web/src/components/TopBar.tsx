@@ -38,7 +38,7 @@ function ModeToggle() {
         className={mode === 'recorded' ? 'on' : ''}
         onClick={() => {
           setMode('recorded');
-          if (!recordingId && recordings.length) setRecording(recordings[0].id);
+          if (!recordingId && recordings.length) setRecording((recordings.find((r) => r.expectedInsight) ?? recordings[0]).id);
         }}
       >
         Recorded

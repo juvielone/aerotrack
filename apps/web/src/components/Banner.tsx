@@ -17,7 +17,7 @@ export function Banner() {
 
   const goRecorded = () => {
     setMode('recorded');
-    if (!recordingId && recordings.length) setRecording(recordings[0].id);
+    if (!recordingId && recordings.length) setRecording((recordings.find((r) => r.expectedInsight) ?? recordings[0]).id);
   };
 
   let body: ReactNode = null;

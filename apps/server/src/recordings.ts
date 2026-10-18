@@ -64,6 +64,17 @@ export function listRecordings(): RecordingInfo[] {
     .filter((r) => r.polls > 0);
 }
 
+/**
+ * What the Recorded tab lists: only the curated demo examples (entries with `expectedInsight`), unless
+ * AEROTRACK_SHOW_CAPTURES=true, which adds every other recording after them. With no examples, everything is listed.
+ */
+export function demoRecordings(): RecordingInfo[] {
+  const all = listRecordings();
+  const examples = all.filter((r) => r.expectedInsight);
+  if (!examples.length) return all;
+  return env.showCaptures ? [...examples, ...all.filter((r) => !r.expectedInsight)] : examples;
+}
+
 export function getRecording(id: string): { info: RecordingInfo; polls: RawPoll[] } | null {
   const info = listRecordings().find((r) => r.id === id);
   if (!info) return null;

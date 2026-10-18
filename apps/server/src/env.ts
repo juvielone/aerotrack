@@ -19,6 +19,8 @@ export const env = {
   pollSeconds: Math.max(5, num(process.env.AEROTRACK_POLL_SECONDS, 5)),
   /** Set to "false" to run fully offline (recorded mode only). */
   liveEnabled: process.env.AEROTRACK_LIVE !== 'false',
+  /** Also list captures and other recordings in the Recorded tab, not just the demo examples. */
+  showCaptures: process.env.AEROTRACK_SHOW_CAPTURES === 'true',
   dataDir: process.env.AEROTRACK_DATA_DIR ?? join(ROOT, 'data'),
   webDist: join(ROOT, 'apps', 'web', 'dist'),
 };

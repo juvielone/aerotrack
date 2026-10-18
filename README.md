@@ -66,6 +66,7 @@ When you select an airliner, a **dashed violet line** runs from the aircraft to 
 | `AEROTRACK_RADIUS_NM` | `250` | Poll radius |
 | `AEROTRACK_POLL_SECONDS` | `5` | Poll interval (min 5) |
 | `AEROTRACK_LIVE` | `true` | `false` = offline, recorded-only server |
+| `AEROTRACK_SHOW_CAPTURES` | `false` | `true` = also list captures in the Recorded tab (normally only the demo example flights) |
 | `PORT` / `HOST` | `8787` / `127.0.0.1` | Server bind |
 
 No API keys are needed, and none are ever sent to the client.

@@ -6,7 +6,7 @@ import { AIRPORTS, CoverageModel, routePlausible, type CoverageGrid } from '@aer
 import { env } from './env';
 import { RouteService } from './flightRoutes';
 import { LiveFeed } from './live';
-import { getRecording, listRecordings } from './recordings';
+import { demoRecordings, getRecording } from './recordings';
 import { Replay, SPEEDS } from './replay';
 
 function loadCoverage(): CoverageModel {
@@ -83,7 +83,7 @@ app.get<{ Params: { callsign: string }; Querystring: { lat?: string; lon?: strin
 
 // ---- Recorded ---------------------------------------------------------------
 
-app.get('/api/recordings', async () => listRecordings());
+app.get('/api/recordings', async () => demoRecordings());
 
 app.get<{ Params: { recId: string }; Querystring: { speed?: string; t?: string } }>('/api/replay/:recId/stream', (req, reply) => {
   const rec = getRecording(req.params.recId);
