@@ -10,5 +10,134 @@
       151.1772,
       -33.9461
     ]
+  },
+  {
+    "id": "syd-2026-10-18-01-15",
+    "title": "Sydney traffic, 2026-10-18",
+    "file": "syd-2026-10-18-01-15.ndjson",
+    "date": "2026-10-18T01:15:23.215Z",
+    "source": "ADSB.lol (ODbL)",
+    "kind": "live-capture",
+    "center": [
+      151.1772,
+      -33.9461
+    ],
+    "zoom": 7
+  },
+  {
+    "id": "jq38-go-around-syd",
+    "title": "JQ38 go-around at Sydney",
+    "file": "jq38-go-around-syd.ndjson",
+    "date": "2025-06-25T20:05:07.750Z",
+    "source": "ADSB.lol (ODbL)",
+    "kind": "imported-trace",
+    "center": [
+      150.8528025,
+      -33.937571500000004
+    ],
+    "zoom": 8,
+    "staleSec": 120,
+    "speed": 32,
+    "expectedInsight": "GO_AROUND",
+    "focus": {
+      "hex": "7c4a45",
+      "ts": 1750883931500
+    },
+    "reportedCause": "The ATSB found the aircraft floated during the landing flare in a crosswind and drifted left of the centreline; the captain called a go-around (ATSB report AO-2025-036).",
+    "sourceLink": "https://www.atsb.gov.au/sites/default/files/2026-01/AO-2025-036%20Final.pdf"
+  },
+  {
+    "id": "qf643-7700-syd",
+    "title": "QF643 returns to Sydney",
+    "file": "qf643-7700-syd.ndjson",
+    "date": "2025-03-02T21:42:08.250Z",
+    "source": "ADSB.lol (ODbL)",
+    "kind": "imported-trace",
+    "center": [
+      151.0826395,
+      -33.9760895
+    ],
+    "zoom": 8,
+    "staleSec": 120,
+    "speed": 32,
+    "expectedInsight": "SQUAWK_7700",
+    "focus": {
+      "hex": "7c6de9",
+      "ts": 1740952584540
+    },
+    "reportedCause": "Smoke was reported in the cockpit shortly after take-off; the crew made a PAN call and returned to Sydney (Australian Aviation, 3 Mar 2025).",
+    "sourceLink": "https://australianaviation.com.au/?p=1407193"
+  },
+  {
+    "id": "qf543-holding-syd",
+    "title": "QF543 holding before Sydney",
+    "file": "qf543-holding-syd.ndjson",
+    "date": "2025-03-02T06:20:18.620Z",
+    "source": "ADSB.lol (ODbL)",
+    "kind": "imported-trace",
+    "center": [
+      152.5452205,
+      -33.6712335
+    ],
+    "zoom": 8,
+    "staleSec": 120,
+    "speed": 32,
+    "expectedInsight": "POSSIBLE_CIRCLING",
+    "focus": {
+      "hex": "7c6de9",
+      "ts": 1740897534390
+    }
+  },
+  {
+    "id": "va993-emergency-descent",
+    "title": "VA993 emergency descent",
+    "file": "va993-emergency-descent.ndjson",
+    "date": "2025-08-13T10:55:02.330Z",
+    "source": "ADSB.lol (ODbL)",
+    "kind": "imported-trace",
+    "center": [
+      152.495403,
+      -31.390497
+    ],
+    "zoom": 8,
+    "staleSec": 120,
+    "speed": 32,
+    "expectedInsight": "RAPID_DESCENT",
+    "focus": {
+      "hex": "7c29d5",
+      "ts": 1755083361920
+    },
+    "reportedCause": "Virgin Australia confirmed a depressurisation event; the crew descended to a lower altitude, made a PAN call and landed normally in Brisbane (The Nightly, Aug 2025).",
+    "sourceLink": "https://thenightly.com.au/australia/va933-panic-on-virgin-sydney-to-brisbane-flight-as-sudden-mid-air-descent-leaves-passengers-in-the-dark--c-19680445"
+  },
+  {
+    "id": "ba16-turnback-syd",
+    "title": "BA16 returns to Sydney (look-alike check)",
+    "file": "ba16-turnback-syd.ndjson",
+    "date": "2025-09-08T05:00:04.510Z",
+    "source": "ADSB.lol (ODbL)",
+    "kind": "imported-trace",
+    "center": [
+      150.1230525,
+      -33.765808
+    ],
+    "zoom": 8,
+    "staleSec": 120,
+    "speed": 60
+  },
+  {
+    "id": "ujv-bankstown-landing",
+    "title": "VH-UJV landing at Bankstown (look-alike check)",
+    "file": "ujv-bankstown-landing.ndjson",
+    "date": "2025-06-25T06:30:01.360Z",
+    "source": "ADSB.lol (ODbL)",
+    "kind": "imported-trace",
+    "center": [
+      150.709364,
+      -33.622009000000006
+    ],
+    "zoom": 8,
+    "staleSec": 120,
+    "speed": 16
   }
 ]

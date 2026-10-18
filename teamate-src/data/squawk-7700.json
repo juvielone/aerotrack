@@ -1,0 +1,26 @@
+{
+    "id": "squawk-7700-example-1",
+    "mode": "recorded",
+    "title": "Emergency squawk example",
+  
+    "flight": {
+      "callsign": "UNKNOWN",
+      "airline": "UNKNOWN",
+      "aircraftType": "UNKNOWN",
+      "origin": "UNKNOWN",
+      "destination": "UNKNOWN"
+    },
+  
+    "recording": {
+      "date": null,
+      "source": "historical ADS-B data",
+      "sourceUrl": null,
+      "newsSourceUrl": null
+    },
+  
+    "expectedInsight": {
+      "type": "SQUAWK_7700"
+    },
+  
+    "points": []
+  }
