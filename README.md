@@ -61,11 +61,13 @@ When you select an airliner, a **dashed violet line** runs from the aircraft to 
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `AEROTRACK_PROVIDER` | `adsblol` | `adsblol` (ADSB.lol, ODbL) or `adsbfi` (adsb.fi) |
+| `AEROTRACK_PROVIDER` | `adsblol` | Preferred feed: `adsblol` (ADSB.lol, ODbL) or `adsbfi` (adsb.fi); the other is the automatic fallback |
 | `AEROTRACK_LAT` / `AEROTRACK_LON` | `-33.9461` / `151.1772` | Centre of the coverage area (SYD) |
 | `AEROTRACK_RADIUS_NM` | `250` | Poll radius |
 | `AEROTRACK_POLL_SECONDS` | `5` | Poll interval (min 5) |
 | `AEROTRACK_LIVE` | `true` | `false` = offline, recorded-only server |
+| `AEROTRACK_CONTACT` | team email | Contact in the User-Agent for Planespotters photo requests (their API requires one); never sent to the browser |
+| `AEROTRACK_SHOW_CAPTURES` | `false` | `true` = also list captures in the Recorded tab (normally only the demo example flights) |
 | `PORT` / `HOST` | `8787` / `127.0.0.1` | Server bind |
 
 No API keys are needed, and none are ever sent to the client.
@@ -94,11 +96,12 @@ When positions stop arriving, the signal-lost logic distinguishes three cases: *
 - Aircraft data: [ADSB.lol](https://adsb.lol) (ODbL), or [adsb.fi](https://adsb.fi) when selected. The active source is named on the map and in the badge.
 - Map: [OpenFreeMap](https://openfreemap.org) © OpenMapTiles, data © OpenStreetMap contributors. Offline basemap: Natural Earth (public domain).
 - Planned routes: ADSB.lol routeset, or [ADSBdb](https://www.adsbdb.com) as fallback (credited on the map while a route is shown).
+- Aircraft photos: [Planespotters.net](https://www.planespotters.net), with the photographer credited and linked on each photo. Shown only when the selected aircraft has one, and only with internet.
 - No Flightradar24 data or UI is used.
 
 ## Known limitations
 
-- **ADSB.lol reachability:** on 18 Oct 2026 `api.adsb.lol` returned HTTP 403, then timed out, from our network, while adsb.fi worked. The live poller backs off and the UI shows "Live data is temporarily unavailable". Set `AEROTRACK_PROVIDER=adsbfi` if that happens at the venue, and check adsb.fi's terms for our use.
+- **ADSB.lol reachability:** on 18 Oct 2026 `api.adsb.lol` returned HTTP 403, then timed out, from our network, while adsb.fi worked. After 2 failed polls in a row the live poller now fails over to the other provider and stays on it (logged as `[live] switching provider: …`); the badge names whichever feed is in use (refresh an open page to update it). If both feeds are down it backs off and the UI shows "Live data is temporarily unavailable". Set `AEROTRACK_PROVIDER=adsbfi` to try adsb.fi first and skip the startup failures, and check adsb.fi's terms for our use.
 - Ground coverage at SYD is patchy, so "Taxiing" often shows as stale, and gaps while on the ground aren't flagged.
 - Go-around is confirmed only after a later landing in the same session, so it's mainly a recorded-mode feature. Live mode shows nothing before confirmation (`goAround.showUnconfirmedHint` in `config.ts`).
 - Holding detection can't tell a published hold from other circling. Low-level circling (e.g. helicopters) gets neutral wording.

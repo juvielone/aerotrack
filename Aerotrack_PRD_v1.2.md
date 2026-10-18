@@ -52,8 +52,8 @@ The explainer is deterministic and rule-based, and runs on timestamped observati
 |---|---|---|
 | Sustained climb / descent | ±1,000 ft over ≥ 60 s and ≥ 4 obs, or sustained \|`baro_rate`\| > 500 fpm | "The aircraft is descending. This often happens on approach, but the data doesn't confirm why." |
 | Sustained turn | Cumulative track change ≥ 30° within 90 s; ignore < 5° per sample; handle 359°/1° wraparound | "The aircraft is changing direction, possibly as part of its route." |
-| Possible holding / circling | Cumulative track change ≥ 300° within ~6 min, roughly level altitude | "Appears to be circling. Aircraft often do this in a holding pattern while waiting to land, but the data alone can't confirm it." |
-| Rapid descent | > ~5,000 fpm across ≥ 3 consistent obs for ≥ 30 s | "Descending unusually quickly (~6,000 ft/min). This can happen for several reasons, and the data doesn't show which." |
+| Possible holding / circling | Cumulative track change ≥ 300° within ~6 min, roughly level altitude, as a racetrack (straight leg between turns) or 2+ laps; a single 360° orbit (e.g. for spacing before landing) is reported as a turn | "Appears to be circling. Aircraft often do this in a holding pattern while waiting to land, but the data alone can't confirm it." |
+| Rapid descent | > ~5,000 fpm across ≥ 3 consistent obs for ≥ 30 s, **or** ≥ 10,000 ft lost within 5 min at ≥ 3,000 fpm average (added 18 Oct 2026 for long emergency descents, e.g. a depressurisation at ~3,200 fpm for 8 min) | "Descending unusually quickly (~6,000 ft/min). This can happen for several reasons, and the data doesn't show which." |
 | Go-around (new) | See 4.2 | "The aircraft descended towards the runway, then climbed away and landed on a later approach. This is called a go-around and is a routine procedure." |
 | Emergency squawk 7700 | `squawk` 7700 or `emergency` = `general` | "This aircraft is transmitting a general emergency code (7700)." Fact only. No cause stated. |
 | Radio failure squawk 7600 (new) | `squawk` 7600 or `emergency` = `nordo` | "This aircraft is transmitting code 7600, which signals a loss of radio communication." Fact only. |
@@ -130,7 +130,8 @@ When positions stop arriving, Aerotrack distinguishes three cases instead of one
 ### Still cut
 
 - Metadata-only flight preview and second metadata provider (ADSBdb).
-- Mixed live/sample view, aircraft photos, airport search, filter persistence, polished bottom sheet.
+- Mixed live/sample view, airport search, filter persistence, polished bottom sheet.
+- ~~Aircraft photos~~: added 18 Oct 2026 via the Planespotters.net API, photographer credited and linked on each photo.
 - 3D view.
 - The full Reddit research log (replaced by 3–5 linked posts on one slide).
 
@@ -141,6 +142,7 @@ When positions stop arriving, Aerotrack distinguishes three cases instead of one
 - Use one backend poll shared by all clients to respect rate limits. Keep keys out of client code.
 - Recorded mode must run fully offline. Assume the venue Wi-Fi will fail.
 - Incident examples sourced from news or Reddit: link the source, and use ADSB.lol archive data for the track itself.
+- Aircraft photos come from Planespotters.net: credit the photographer and link to the photo page on every photo; don't store or alter images. Their API needs a contact in the server's User-Agent (`AEROTRACK_CONTACT`). Photos need internet, so they're absent in a fully offline demo.
 
 ## 8. Demo script
 

@@ -4,7 +4,7 @@ import { FlightPanel } from './components/FlightPanel';
 import { NotableList } from './components/NotableList';
 import { ReplayBar } from './components/ReplayBar';
 import { TopBar } from './components/TopBar';
-import { useBootstrap, useDrawableRoute, useSelectedDetail, useSelectedRoute, useStream } from './hooks';
+import { useBootstrap, useDrawableRoute, useSelectedDetail, useSelectedPhoto, useSelectedRoute, useStream } from './hooks';
 import { MapView } from './map/MapView';
 import { useStore } from './store';
 
@@ -13,6 +13,7 @@ export function App() {
   useStream();
   useSelectedDetail();
   useSelectedRoute();
+  useSelectedPhoto();
   const drawn = useDrawableRoute();
   const mode = useStore((s) => s.mode);
   const selected = useStore((s) => s.selectedId !== null);

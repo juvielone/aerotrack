@@ -752,27 +752,6 @@ code {
   gap: 14px;
 }
 
-.signal {
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border-2);
-}
-.signal strong {
-  font-size: 13px;
-}
-.signal p {
-  margin: 4px 0 0;
-  color: var(--text-2);
-  font-size: 13px;
-}
-.signal-unexpected {
-  border-color: rgba(251, 191, 36, 0.45);
-}
-.signal-feed {
-  border-color: rgba(248, 113, 113, 0.45);
-}
-
 .insight {
   padding: 12px 14px;
   border-radius: var(--radius);
@@ -802,6 +781,34 @@ code {
 .insight p {
   margin: 0;
   color: var(--text-2);
+}
+.insight .insight-explain {
+  margin-top: 6px;
+}
+.insight .insight-limits {
+  margin-top: 6px;
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+.insight-recent {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border-2);
+  color: var(--text-2);
+  letter-spacing: 0.03em;
+}
+.insight-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12.5px;
+}
+.insight-evidence {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
 }
 .insight-notice {
   border-color: rgba(251, 191, 36, 0.5);
@@ -1138,4 +1145,67 @@ code {
   margin: 0;
   color: var(--text-2);
   font-size: 12.5px;
+}
+
+.scrubber-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 120px;
+}
+.scrubber-wrap .scrubber {
+  width: 100%;
+}
+.scrubber-mark {
+  position: absolute;
+  top: 50%;
+  width: 3px;
+  height: 14px;
+  margin-left: -1.5px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.ac-photo {
+  margin: 0;
+}
+.ac-photo-frame {
+  aspect-ratio: 3 / 2;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.ac-photo-frame.skeleton {
+  background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 50%, var(--surface) 100%);
+  background-size: 200% 100%;
+  animation: ac-photo-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes ac-photo-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ac-photo-frame.skeleton { animation: none; }
+}
+.ac-photo-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ac-photo figcaption {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.ac-photo figcaption a {
+  color: var(--text-2);
 }

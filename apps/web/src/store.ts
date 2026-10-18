@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { AircraftClass, FlightRoute, SessionDetail } from '@aerotrack/core';
-import type { AppConfig, Mode, RecordingInfo, ReplayState, StreamSnapshot } from './api';
+import type { AircraftPhoto, AppConfig, Mode, RecordingInfo, ReplayState, StreamSnapshot } from './api';
 
 export type Connection = 'idle' | 'connecting' | 'open' | 'error' | 'disabled';
 
@@ -29,6 +29,8 @@ interface State {
   detail: SessionDetail | null;
   /** Planned route of the selected flight (static route data, may be outdated). */
   route: { callsign: string; route: FlightRoute | null; plausible: boolean } | null;
+  /** Photo of the selected aircraft (by hex); photo null = none available. */
+  photo: { hex: string; photo: AircraftPhoto | null } | null;
   filters: Filters;
   bounds: [number, number, number, number] | null;
   offlineBasemap: boolean;
@@ -58,6 +60,7 @@ export const useStore = create<State>((set) => ({
   pendingHex: null,
   detail: null,
   route: null,
+  photo: null,
   filters: { airlines: [], classes: ['passenger'], showCoverage: false },
   bounds: null,
   offlineBasemap: false,

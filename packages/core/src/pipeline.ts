@@ -2,6 +2,7 @@ import { segmentTrack } from './clean';
 import { config } from './config';
 import { CoverageModel } from './coverage';
 import { detectEvents, type DetectContext } from './detectors';
+import { analyseFlight } from './insights/analyseFlight';
 import { explainSignal, LAST_SEEN_ON_GROUND } from './explain';
 import { normalizePoll } from './normalize';
 import { SessionStore } from './sessions';
@@ -25,10 +26,8 @@ const NOTABLE_RANK: Partial<Record<EventType | 'signal-lost', number>> = {
   'signal-lost': 2,
   holding: 1,
 };
-/** Finished notable events stay in the list this long. */
-const NOTABLE_LINGER_MS = 5 * 60_000;
-/** Aircraft disappear from the map this long after their last position. */
-const SHOW_STALE_MS = 10 * 60_000;
+const NOTABLE_LINGER_MS = config.notable.lingerSec * 1000;
+const SHOW_STALE_MS = config.stale.showStaleSec * 1000;
 
 /**
  * Feed → flight sessions → detectors → snapshot. Used identically for live polling and recorded replay,
@@ -152,13 +151,15 @@ export class Pipeline {
     const { obs, ...rest } = s;
     const meta = latestMeta(s);
     const span = obs.length ? obs[obs.length - 1].ts - obs[0].ts : 0;
+    const signal = this.signal(s, now, feed.down);
     return {
       session: { ...rest, reg: meta.reg, type: meta.type, category: meta.category },
       track: obs.map((o) => ({ ts: o.ts, lat: o.lat, lon: o.lon, alt: o.alt, onGround: o.onGround, gs: o.gs, glitch: o.glitch })),
       segments: segmentTrack(obs, this.staleSec),
       status: computeStatus(s, now, this.staleSec),
-      signal: this.signal(s, now, feed.down),
+      signal,
       insufficientHistory: obs.length < config.status.minObs || span < 30_000,
+      insights: analyseFlight({ events: s.events, signal }, now),
     };
   }
 }

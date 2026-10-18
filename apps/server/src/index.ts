@@ -6,7 +6,8 @@ import { AIRPORTS, CoverageModel, routePlausible, type CoverageGrid } from '@aer
 import { env } from './env';
 import { RouteService } from './flightRoutes';
 import { LiveFeed } from './live';
-import { getRecording, listRecordings } from './recordings';
+import { PhotoService } from './photos';
+import { demoRecordings, getRecording } from './recordings';
 import { Replay, SPEEDS } from './replay';
 
 function loadCoverage(): CoverageModel {
@@ -20,6 +21,7 @@ const coverage = loadCoverage();
 const live = new LiveFeed(coverage);
 const replays = new Map<string, Replay>();
 const routes = new RouteService();
+const photos = new PhotoService();
 
 const app = Fastify({ logger: false });
 
@@ -44,7 +46,7 @@ function openSse(reply: FastifyReply, onClose: () => void) {
 app.get('/api/config', async () => ({
   center: [env.lon, env.lat],
   radiusNm: env.radiusNm,
-  live: { enabled: env.liveEnabled, source: env.provider.label, pollSeconds: env.pollSeconds },
+  live: { enabled: env.liveEnabled, source: live.provider.label, pollSeconds: env.pollSeconds },
   airports: AIRPORTS,
   lowCoverage: coverage.lowCellPolygons(),
   speeds: SPEEDS,
@@ -81,9 +83,16 @@ app.get<{ Params: { callsign: string }; Querystring: { lat?: string; lon?: strin
   return { route, plausible };
 });
 
+// ---- Aircraft photos (Planespotters.net, credited in the panel) ---------------
+
+app.get<{ Params: { hex: string }; Querystring: { reg?: string } }>('/api/photo/:hex', async (req) => {
+  if (!/^~?[0-9a-f]{6}$/i.test(req.params.hex)) return { photo: null };
+  return { photo: await photos.lookup(req.params.hex, req.query.reg).catch(() => null) };
+});
+
 // ---- Recorded ---------------------------------------------------------------
 
-app.get('/api/recordings', async () => listRecordings());
+app.get('/api/recordings', async () => demoRecordings());
 
 app.get<{ Params: { recId: string }; Querystring: { speed?: string; t?: string } }>('/api/replay/:recId/stream', (req, reply) => {
   const rec = getRecording(req.params.recId);

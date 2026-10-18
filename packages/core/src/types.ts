@@ -1,3 +1,5 @@
+import type { FlightInsight } from './insights/types';
+
 /** Raw aircraft record as returned by ADSB.lol (readsb format). Only fields we use. */
 export interface RawAircraft {
   hex: string;
@@ -86,6 +88,9 @@ export interface EventEvidence {
   gapCause?: GapCause;
   lat?: number;
   lon?: number;
+  /** Circling: displacement / path distance over the episode. */
+  progressRatio?: number;
+  confidence?: 'medium' | 'high';
 }
 
 export interface FlightEvent {
@@ -186,4 +191,6 @@ export interface SessionDetail {
   status: StatusTag;
   signal: SignalState;
   insufficientHistory: boolean;
+  /** Active and recent insights at the detail's time, highest priority first. */
+  insights: FlightInsight[];
 }

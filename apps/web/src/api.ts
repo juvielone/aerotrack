@@ -17,6 +17,15 @@ export interface Highlight {
   hex?: string;
 }
 
+/** A Planespotters.net photo of an aircraft, with what is needed to credit it. */
+export interface AircraftPhoto {
+  src: string;
+  width: number;
+  height: number;
+  link: string;
+  photographer: string;
+}
+
 export interface RecordingInfo {
   id: string;
   title: string;
@@ -29,6 +38,11 @@ export interface RecordingInfo {
   reportedCause?: string;
   sourceLink?: string;
   highlights?: Highlight[];
+  speed?: number;
+  /** Demo example: the pattern this snippet shows (an InsightType). */
+  expectedInsight?: string;
+  /** Demo example: aircraft to select and the moment the pattern first shows. */
+  focus?: { hex: string; ts: number };
   startTs: number;
   endTs: number;
   polls: number;

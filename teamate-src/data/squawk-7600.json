@@ -1,0 +1,26 @@
+{
+    "id": "squawk-7600-example-1",
+    "mode": "recorded",
+    "title": "Radio failure squawk example",
+  
+    "flight": {
+      "callsign": "UNKNOWN",
+      "airline": "UNKNOWN",
+      "aircraftType": "UNKNOWN",
+      "origin": "UNKNOWN",
+      "destination": "UNKNOWN"
+    },
+  
+    "recording": {
+      "date": null,
+      "source": "historical ADS-B data",
+      "sourceUrl": null,
+      "newsSourceUrl": null
+    },
+  
+    "expectedInsight": {
+      "type": "SQUAWK_7600"
+    },
+  
+    "points": []
+  }

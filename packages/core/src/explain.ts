@@ -3,7 +3,8 @@ import type { Detected } from './detectors/common';
 
 // Fact-first wording (PRD §4). Never states a cause; "possible" where the data can't confirm.
 
-const fmtFt = (ft: number | null | undefined) => (ft == null ? '?' : `${Math.round(ft).toLocaleString('en-AU')} ft`);
+// ADS-B altitude is pressure altitude, which can read below zero near the runway; don't show that as a height.
+const fmtFt = (ft: number | null | undefined) => (ft == null ? '?' : ft < 100 ? 'near ground level' : `${Math.round(ft).toLocaleString('en-AU')} ft`);
 const fmtRate = (fpm: number) => `~${(Math.round(Math.abs(fpm) / 100) * 100).toLocaleString('en-AU')} ft/min`;
 
 export function minutesAgo(sec: number): string {

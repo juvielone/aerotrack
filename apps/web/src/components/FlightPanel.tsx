@@ -5,18 +5,20 @@ import {
   INSUFFICIENT_HISTORY,
   airlineName,
   airlinePrefix,
+  analyseFlight,
   distanceKm,
+  evidenceLine,
   routePlausible,
+  selectInsight,
   type AircraftSummary,
   type FlightEvent,
+  type FlightInsight,
   type SessionDetail,
+  type Severity,
 } from '@aerotrack/core';
 import { fmtDeg, fmtDuration, fmtFpm, fmtFt, fmtKt, fmtTime, SEVERITY_COLOR, STATUS_TONE } from '../format';
 import { useStore } from '../store';
 import { AltitudeChart } from './AltitudeChart';
-
-const NOTABLE = new Set(['squawk-7700', 'squawk-7600', 'rapid-descent', 'go-around', 'go-around-hint', 'holding']);
-const SEV_ORDER = { alert: 3, warning: 2, notice: 1, info: 0 } as const;
 
 export function FlightPanel() {
   const selectedId = useStore((s) => s.selectedId);
@@ -34,7 +36,6 @@ export function FlightPanel() {
   const prefix = airlinePrefix(callsign);
   const airline = prefix ? airlineName(prefix) : null;
   const status = a?.status ?? d?.status ?? 'Unknown';
-  const signal = a?.signal ?? d?.signal;
   const source = mode === 'live' ? config?.live.source : recording?.source;
 
   return (
@@ -56,13 +57,8 @@ export function FlightPanel() {
       </div>
 
       <div className="panel-body">
+        <AircraftPhotoBlock hex={a?.hex ?? d?.session.hex ?? ''} reg={a?.reg ?? d?.session.reg ?? null} />
         <RouteRow />
-        {signal?.stale && signal.text && (
-          <div className={`signal signal-${signal.cause ?? 'ground'}`}>
-            <strong>{signal.cause === 'feed' ? 'Live data unavailable' : signal.cause ? 'Positions stopped arriving' : 'Last seen on the ground'}</strong>
-            <p>{signal.text}</p>
-          </div>
-        )}
 
         {d ? <Insight detail={d} a={a} now={now} /> : <div className="insight skeleton">Loading flight history…</div>}
 
@@ -100,6 +96,41 @@ export function FlightPanel() {
         </footer>
       </div>
     </aside>
+  );
+}
+
+/** Photo of this aircraft from Planespotters.net, always credited and linked. Hidden when there is none. */
+function AircraftPhotoBlock({ hex, reg }: { hex: string; reg: string | null }) {
+  const photo = useStore((s) => s.photo);
+  const [failed, setFailed] = useState<string | null>(null);
+  if (!hex) return null;
+  const loading = !photo || photo.hex !== hex;
+  if (!loading && (!photo.photo || failed === photo.photo.src)) return null;
+  const p = loading ? null : photo.photo!;
+  return (
+    <figure className="ac-photo">
+      <div className={`ac-photo-frame${p ? '' : ' skeleton'}`}>
+        {p && (
+          <img
+            key={p.src}
+            src={p.src}
+            width={p.width}
+            height={p.height}
+            loading="lazy"
+            alt={`${reg ?? hex.toUpperCase()}, photo by ${p.photographer}`}
+            onError={() => setFailed(p.src)}
+          />
+        )}
+      </div>
+      {p && (
+        <figcaption>
+          <a href={p.link} target="_blank" rel="noreferrer">
+            Photo © {p.photographer} · Planespotters.net
+          </a>
+          <span>Photo of this aircraft, not necessarily this flight</span>
+        </figcaption>
+      )}
+    </figure>
   );
 }
 
@@ -144,40 +175,63 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** The most relevant thing the data shows right now, with its evidence one tap away. */
+const SIGNAL_TONE: Record<string, Severity> = { feed: 'warning', unexpected: 'notice', coverage: 'info' };
+
+/**
+ * The most relevant thing the data shows right now, with its evidence one tap away. Shows the highest-priority
+ * active or recent insight at snapshot time (replay time in recorded mode), otherwise the default status text.
+ */
 function Insight({ detail, a, now }: { detail: SessionDetail; a: AircraftSummary | undefined; now: number }) {
   const [why, setWhy] = useState(false);
   const events = detail.session.events;
-  const pick =
-    [...events].filter((e) => NOTABLE.has(e.type) && (e.ongoing || now - e.endTs < 5 * 60_000)).sort((x, y) => SEV_ORDER[y.severity] - SEV_ORDER[x.severity] || y.endTs - x.endTs)[0] ??
-    [...events].reverse().find((e) => e.ongoing && (e.type === 'climb' || e.type === 'descent' || e.type === 'turn'));
+  // Recomputed against the latest snapshot time; the detail itself may be up to a second old.
+  const sel = selectInsight(analyseFlight({ events, signal: a?.signal ?? detail.signal }, now), now);
 
-  let title = 'What the data shows';
-  let text: string;
-  let tone = 'info';
-  if (pick) {
-    title = EVENT_LABEL[pick.type];
-    text = pick.text;
-    tone = pick.severity;
-  } else if (detail.insufficientHistory) {
-    text = INSUFFICIENT_HISTORY;
-  } else {
-    text = describeStatus(detail, a);
+  if (!sel) {
+    const text = detail.insufficientHistory ? INSUFFICIENT_HISTORY : describeStatus(detail, a);
+    return (
+      <section className="insight insight-info">
+        <header>
+          <span className="insight-kicker">Aerotrack insight</span>
+        </header>
+        <h3>What the data shows</h3>
+        <p>{text}</p>
+      </section>
+    );
   }
 
+  const ins = sel.primary;
+  const source = ins.eventId ? events.find((e) => e.id === ins.eventId) : undefined;
+  const tone = source?.severity ?? SIGNAL_TONE[(a?.signal ?? detail.signal).cause ?? ''] ?? 'info';
+  const evidence = evidenceLine(ins.evidence);
   return (
     <section className={`insight insight-${tone}`}>
       <header>
-        <span className="insight-kicker">Aerotrack insight</span>
-        {pick && (
+        <span className="insight-kicker">
+          Aerotrack insight
+          {ins.status === 'recent' && <span className="insight-recent">Recent</span>}
+        </span>
+        {source && (
           <button className="link" onClick={() => setWhy((w) => !w)} aria-expanded={why}>
             {why ? 'Hide evidence' : 'Why am I seeing this?'}
           </button>
         )}
       </header>
-      <h3>{title}</h3>
-      <p>{text}</p>
-      {pick && why && <Evidence e={pick} />}
+      <h3>{ins.title}</h3>
+      <p>{ins.observed}</p>
+      <p className="insight-explain">{ins.explanation}</p>
+      {ins.limitations && <p className="insight-limits">{ins.limitations}</p>}
+      {(evidence || sel.moreCount > 0) && (
+        <div className="insight-foot">
+          {evidence && <span className="insight-evidence">{evidence}</span>}
+          {sel.moreCount > 0 && (
+            <button className="link" onClick={() => document.getElementById('event-timeline')?.scrollIntoView({ behavior: 'smooth' })}>
+              +{sel.moreCount} more
+            </button>
+          )}
+        </div>
+      )}
+      {source && why && <Evidence e={source} />}
     </section>
   );
 }
@@ -242,7 +296,7 @@ function Timeline({ events }: { events: FlightEvent[] }) {
   const list = [...events].reverse().filter((e) => showRoutine || !routine(e));
   const hidden = events.filter(routine).length;
   return (
-    <section className="timeline">
+    <section className="timeline" id="event-timeline">
       <header>
         <h3>Event timeline</h3>
         {hidden > 0 && (
@@ -261,7 +315,7 @@ function Timeline({ events }: { events: FlightEvent[] }) {
               <span className="tl-text">
                 <strong>
                   {EVENT_LABEL[e.type]}
-                  {e.ongoing && <em> · now</em>}
+                  {e.ongoing ? <em> · now</em> : e.endTs > e.startTs && <em className="tl-ended"> · ended {fmtTime(e.endTs)}</em>}
                 </strong>
                 <span>{e.text}</span>
               </span>

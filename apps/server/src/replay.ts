@@ -29,6 +29,8 @@ export class Replay {
   private t: number;
   private speed: number;
   private playing = true;
+  /** The replay pauses once when it first reaches the recording's focus moment, so the presenter can explain it. */
+  private pausedAtFocus = false;
   private timer: NodeJS.Timeout | null = null;
 
   constructor(
@@ -38,7 +40,7 @@ export class Replay {
     private listener: Listener,
     opts: { speed?: number; startTs?: number } = {},
   ) {
-    this.speed = opts.speed ?? 8;
+    this.speed = opts.speed ?? info.speed ?? 8;
     this.t = info.startTs;
     this.reset();
     if (opts.startTs) this.advanceTo(opts.startTs);
@@ -103,8 +105,15 @@ export class Replay {
 
   private tick(): void {
     if (!this.playing) return;
-    const next = Math.min(this.t + TICK_MS * this.speed, this.info.endTs);
+    let next = Math.min(this.t + TICK_MS * this.speed, this.info.endTs);
+    const focus = this.info.focus?.ts;
+    const reachesFocus = focus !== undefined && !this.pausedAtFocus && this.t < focus && next >= focus;
+    if (reachesFocus) next = focus;
     this.advanceTo(next);
+    if (reachesFocus) {
+      this.pausedAtFocus = true;
+      this.playing = false;
+    }
     if (next >= this.info.endTs) this.playing = false;
     this.emit();
   }

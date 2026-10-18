@@ -79,6 +79,40 @@ describe('rapid descent', () => {
     expect(ev.some((e) => e.type === 'descent')).toBe(false);
   });
 
+  it('detects a long emergency descent that is never steep for 30 s (large-descent rule)', () => {
+    // Synthetic: ~3,200 fpm for 8 min (37,000 → ~11,400 ft), baro_rate wobbling between -3,500 and -4,800.
+    const obs = series(100, 5, (k) => ({ alt: 37000 - k * 267, baroRate: k % 3 === 0 ? -4800 : -3500 }));
+    const rapid = detectEvents(obs, ctx()).filter((e) => e.type === 'rapid-descent');
+    expect(rapid).toHaveLength(1);
+    expect(Math.abs(rapid[0].evidence.rateFpm!)).toBeGreaterThanOrEqual(3000);
+    expect(has(obs, 'descent')).toBe(false); // reported once
+  });
+
+  it('does not flag a brisk but normal descent (~2,800 fpm for 10 min) as rapid', () => {
+    const obs = series(120, 5, (k) => ({ alt: 36000 - k * 233, baroRate: -2800 }));
+    expect(has(obs, 'rapid-descent')).toBe(false);
+  });
+
+  it('does not flag a normal descent (~1,800 fpm) as rapid', () => {
+    // Synthetic: typical descent from cruise.
+    const obs = series(60, 5, (k) => ({ alt: 30000 - k * 150, baroRate: -1800 }));
+    expect(has(obs, 'rapid-descent')).toBe(false);
+    expect(has(obs, 'descent')).toBe(true);
+  });
+
+  it('needs at least 2,500 ft of real altitude loss', () => {
+    // Synthetic: steep for 35 s but only ~2,300 ft lost.
+    const obs = series(20, 5, (k) => ({ alt: 20000 - Math.min(Math.max(0, k - 5), 7) * 333, baroRate: k > 5 && k <= 12 ? -6000 : 0 }));
+    expect(has(obs, 'rapid-descent')).toBe(false);
+  });
+
+  it('is not triggered by a single-sample altitude spike', () => {
+    // Synthetic: level cruise with one reading 8,000 ft too low.
+    const obs = series(20, 5, (k) => ({ alt: k === 10 ? 27000 : 35000, baroRate: 0 }));
+    expect(types(obs)).toContain('glitch');
+    expect(has(obs, 'rapid-descent')).toBe(false);
+  });
+
   it('ignores a bad baro_rate when altitude is not actually dropping', () => {
     const obs = series(20, 5, () => ({ alt: 20000, baroRate: -7000 }));
     expect(has(obs, 'rapid-descent')).toBe(false);
@@ -103,18 +137,105 @@ describe('holding / circling', () => {
     const obs = path(30, 5, (k) => ({ track: (k * 15) % 360, alt: 20000 - k * 300, gs: 250 }));
     expect(has(obs, 'holding')).toBe(false);
   });
+
+  it('reports progress ratio and confidence as evidence', () => {
+    // Synthetic: tight level orbits, 3° per second.
+    const obs = path(96, 5, (k) => ({ track: (k * 15) % 360, alt: 9000, gs: 200 }));
+    const hold = detectEvents(obs, ctx()).find((e) => e.type === 'holding');
+    expect(hold?.evidence.progressRatio).toBeLessThanOrEqual(0.4);
+    expect(hold?.evidence.confidence).toBe('high');
+  });
+
+  it('rejects track rotation when the position keeps making progress', () => {
+    // Synthetic: track field spins, but positions move steadily north (e.g. a bad track source).
+    const obs = series(96, 5, (k) => ({ track: (k * 15) % 360, alt: 9000, gs: 200, lat: SYD.lat - 1 + k * 0.005, lon: SYD.lon }));
+    expect(has(obs, 'holding')).toBe(false);
+  });
+
+  it('still detects a high-level racetrack hold with 1.5-minute legs', () => {
+    // Synthetic: FL300 hold, 60 s 180° turns and 90 s straight legs, two laps.
+    const obs = path(120, 5, (k) => {
+      const t = k % 60; // one lap = 60 samples = 5 min
+      const lap = Math.floor(k / 60) * 360;
+      const heading = t < 12 ? t * 15 : t < 30 ? 180 : t < 42 ? 180 + (t - 30) * 15 : 360;
+      return { track: (lap + heading) % 360, alt: 30000, gs: 240 };
+    });
+    expect(has(obs, 'holding')).toBe(true);
+  });
+});
+
+/** Heading profile from (seconds, degrees per second) segments: a straight leg is a rate of 0. */
+function headings(segments: [number, number][], start = 0): (k: number) => number {
+  return (k) => {
+    let t = k * 5;
+    let h = start;
+    for (const [dur, rate] of segments) {
+      const d = Math.min(t, dur);
+      h += d * rate;
+      t -= d;
+      if (t <= 0) break;
+    }
+    return ((h % 360) + 360) % 360;
+  };
+}
+
+describe('holding look-alikes before landing (synthetic): must NOT be circling', () => {
+  it('a normal approach pattern: downwind, base, final (~180°)', () => {
+    const h = headings([[90, 0], [30, -3], [40, 0], [30, -3], [200, 0]], 340);
+    const obs = path(78, 5, (k) => ({ track: h(k), alt: Math.max(100, k < 30 ? 3000 : 3000 - (k - 30) * 60), gs: k < 30 ? 210 : 160 }), { lat: SYD.lat - 0.15, lon: SYD.lon - 0.1 });
+    expect(has(obs, 'holding')).toBe(false);
+  });
+
+  it('a long winding arrival with three 90° turns the same way', () => {
+    const h = headings([[60, 0], [30, 3], [45, 0], [30, 3], [45, 0], [30, 3], [120, 0]], 90);
+    const obs = path(72, 5, (k) => ({ track: h(k), alt: 6000, gs: 250 }));
+    expect(has(obs, 'holding')).toBe(false);
+  });
+
+  it('S-turns that cancel out', () => {
+    const h = headings([[20, 3], [40, -3], [40, 3], [40, -3], [40, 3], [40, -3], [40, 3], [40, -3]], 0);
+    const obs = path(64, 5, (k) => ({ track: h(k), alt: 8000, gs: 230 }));
+    expect(has(obs, 'holding')).toBe(false);
+  });
+
+  it('a single 360° orbit for spacing is a turn, not circling', () => {
+    // Rate-one turn (3°/s): 360° in 2 min, level, with straight flight either side.
+    const h = headings([[60, 0], [120, 3], [120, 0]], 160);
+    const obs = path(60, 5, (k) => ({ track: h(k), alt: 4000, gs: 200 }));
+    const ev = detectEvents(obs, ctx());
+    expect(ev.some((e) => e.type === 'holding')).toBe(false);
+    const turn = ev.find((e) => e.type === 'turn');
+    expect(turn?.evidence.degrees).toBeGreaterThanOrEqual(330);
+  });
+
+  it('a low circling approach to another runway (270° while descending)', () => {
+    const h = headings([[30, 0], [90, -3], [60, 0]], 340);
+    const obs = path(36, 5, (k) => ({ track: h(k), alt: 1500 - k * 28, gs: 150 }), { lat: SYD.lat - 0.05, lon: SYD.lon });
+    expect(has(obs, 'holding')).toBe(false);
+  });
+
+  it('a departure turnback (180° while climbing)', () => {
+    const h = headings([[60, 0], [60, 3], [180, 0]], 340);
+    const obs = path(60, 5, (k) => ({ track: h(k), alt: 3000 + k * 150, gs: 250 }));
+    expect(has(obs, 'holding')).toBe(false);
+  });
 });
 
 describe('go-around', () => {
   const nearSyd = { lat: SYD.lat - 0.06, lon: SYD.lon };
-  const approachThenClimb = (land: boolean) =>
+  const approachThenClimb = (land: boolean, groundReports = true) =>
     path(land ? 90 : 50, 5, (k) => {
       if (k < 20) return { alt: 2000 - k * 75, gs: 150, track: 0, baroRate: -900 }; // down to ~575 ft
       if (k < 40) return { alt: 575 + (k - 19) * 150, gs: 170, track: 0, baroRate: 1800 }; // up to ~3,575 ft
       if (k < 50) return { alt: 3500, gs: 180, track: 180 };
       if (k < 85) return { alt: Math.max(100, 3500 - (k - 50) * 100), gs: 150, track: 0, baroRate: -1200 };
-      return { onGround: true, alt: null, gs: 40, track: 0 };
+      return groundReports ? { onGround: true, alt: null, gs: 40, track: 0 } : { alt: 100, gs: 45, track: 0, baroRate: 0 };
     }, nearSyd);
+
+  it('confirms a landing from low speed near the runway when no ground reports arrive', () => {
+    // Synthetic: the feed never sends alt_baro "ground"; the rollout is only seen as 45 kt at 100 ft.
+    expect(has(approachThenClimb(true, false), 'go-around')).toBe(true);
+  });
 
   it('confirms only after a later landing', () => {
     expect(has(approachThenClimb(true), 'go-around')).toBe(true);
