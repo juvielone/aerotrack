@@ -25,10 +25,8 @@ const NOTABLE_RANK: Partial<Record<EventType | 'signal-lost', number>> = {
   'signal-lost': 2,
   holding: 1,
 };
-/** Finished notable events stay in the list this long. */
-const NOTABLE_LINGER_MS = 5 * 60_000;
-/** Aircraft disappear from the map this long after their last position. */
-const SHOW_STALE_MS = 10 * 60_000;
+const NOTABLE_LINGER_MS = config.notable.lingerSec * 1000;
+const SHOW_STALE_MS = config.stale.showStaleSec * 1000;
 
 /**
  * Feed → flight sessions → detectors → snapshot. Used identically for live polling and recorded replay,
