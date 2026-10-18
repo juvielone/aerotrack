@@ -5,3 +5,5 @@ dist/
 .DS_Store
 # Recordings can be large; share demo recordings separately (manifest.json is tracked)
 data/recordings/*.ndjson
+# Raw archive traces cached by import:trace --hex/--date
+data/recordings/trace_full_*.json

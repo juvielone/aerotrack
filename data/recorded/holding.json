@@ -1,0 +1,26 @@
+{
+    "id": "holding-example-1",
+    "mode": "recorded",
+    "title": "Holding pattern example",
+  
+    "flight": {
+      "callsign": "UNKNOWN",
+      "airline": "UNKNOWN",
+      "aircraftType": "UNKNOWN",
+      "origin": "UNKNOWN",
+      "destination": "UNKNOWN"
+    },
+  
+    "recording": {
+      "date": null,
+      "source": "ADSB.lol globe_history (ODbL)",
+      "sourceUrl": null,
+      "newsSourceUrl": null
+    },
+  
+    "expectedInsight": {
+      "type": "POSSIBLE_CIRCLING"
+    },
+  
+    "points": []
+  }

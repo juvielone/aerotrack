@@ -1,15 +1,20 @@
 // Converts ADSB.lol globe_history / readsb `trace_full_<hex>.json` files (gzipped or plain, local path or URL)
 // into a replayable recording. Use this for real past incidents found via news or Reddit.
 //
+// Also writes the same points as FlightPoint[] to data/recorded/<id>.json (recorded-flight template format).
+//
 // Usage:
 //   npm run import:trace -- --id qf-go-around --title "QF… go-around at SYD" \
-//     [--reported-cause "…"] [--source-link https://…] [--description "…"] [--stale-sec 120] \
+//     [--reported-cause "…"] [--source-link https://…] [--description "…"] [--stale-sec 120] [--expect GO_AROUND] \
 //     path/to/trace_full_7c1234.json [more traces…]
+//   npm run import:trace -- --id qf-go-around --title "…" --hex 7c1234 --date 2026-10-16
+//     (streams that day's ADSB.lol globe_history archive, up to ~4 GB, until the trace is found, then caches it)
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
-import type { RawAircraft, RawPoll } from '@aerotrack/core';
+import { airlineName, airlinePrefix, type FlightPoint, type RawAircraft, type RawPoll } from '@aerotrack/core';
 import { env } from '../src/env';
+import { archiveParts, fetchArchivedTrace } from './globeHistory';
 
 const args = process.argv.slice(2);
 const opts: Record<string, string> = {};
@@ -18,9 +23,29 @@ for (let i = 0; i < args.length; i++) {
   if (args[i].startsWith('--')) opts[args[i].slice(2)] = args[++i];
   else inputs.push(args[i]);
 }
-if (!opts.id || !inputs.length) {
-  console.error('Usage: npm run import:trace -- --id <id> --title "<title>" [--reported-cause …] [--source-link …] trace_full_<hex>.json …');
+if (!opts.id || (!inputs.length && !(opts.hex && opts.date))) {
+  console.error('Usage: npm run import:trace -- --id <id> --title "<title>" [--reported-cause …] [--source-link …] (trace_full_<hex>.json … | --hex <icao> --date YYYY-MM-DD)');
   process.exit(1);
+}
+
+const recDir = join(env.dataDir, 'recordings');
+mkdirSync(recDir, { recursive: true });
+let archiveUrl: string | null = null;
+if (opts.hex) {
+  const hex = opts.hex.toLowerCase();
+  if (!/^~?[0-9a-f]{6}$/.test(hex)) throw new Error(`--hex must be a 6-character ICAO hex (got "${opts.hex}")`);
+  // Cached so a re-import doesn't stream the archive again.
+  const cached = join(recDir, `trace_full_${hex}_${opts.date}.json`);
+  if (existsSync(cached)) {
+    console.log(`[import] using cached ${cached}`);
+  } else {
+    const { tag, url, parts } = await archiveParts(opts.date);
+    archiveUrl = url;
+    console.log(`[import] streaming ${tag} (${parts.length} parts) for ${hex}…`);
+    writeFileSync(cached, await fetchArchivedTrace(hex, parts));
+    console.log(`[import] cached → ${cached}`);
+  }
+  inputs.push(cached);
 }
 
 async function readInput(src: string): Promise<any> {
@@ -74,8 +99,6 @@ for (const p of points) {
   else polls.push({ now: p.ts, ac: [p.ac] });
 }
 
-const recDir = join(env.dataDir, 'recordings');
-mkdirSync(recDir, { recursive: true });
 const file = `${opts.id}.ndjson`;
 writeFileSync(join(recDir, file), polls.map((p) => JSON.stringify(p)).join('\n') + '\n');
 
@@ -103,3 +126,46 @@ if (i >= 0) manifest[i] = { ...manifest[i], ...entry };
 else manifest.push(entry);
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
 console.log(`[import] wrote ${polls.length} polls → data/recordings/${file} and updated manifest.json`);
+
+// ---- Recorded-flight template (data/recorded/<id>.json), format adapted from teamate-src/data/*.json ----------
+// Only fields present in the trace are filled; unknowns stay "UNKNOWN". No points are invented.
+const flightPoints: FlightPoint[] = points.map(({ ts, ac }) => ({
+  timestamp: ts, // position time from the trace
+  lat: ac.lat as number,
+  lon: ac.lon as number,
+  altitudeFt: typeof ac.alt_baro === 'number' ? ac.alt_baro : null,
+  verticalRateFpm: ac.baro_rate ?? null,
+  groundSpeedKt: ac.gs ?? null,
+  headingDeg: ac.track ?? null,
+  squawk: ac.squawk ?? null,
+  emergency: ac.emergency ?? null,
+  onGround: ac.alt_baro === 'ground',
+}));
+const callsigns = [...new Set(points.map((p) => p.ac.flight?.trim()).filter(Boolean))];
+const callsign = callsigns[0] ?? null;
+if (callsigns.length > 1) console.warn(`[import] trace covers several flights (${callsigns.join(', ')}); template uses ${callsign}. The replay splits them into sessions.`);
+const prefix = airlinePrefix(callsign);
+const templateDir = join(env.dataDir, 'recorded');
+mkdirSync(templateDir, { recursive: true });
+const template = {
+  id: opts.id,
+  mode: 'recorded',
+  title: opts.title ?? opts.id,
+  flight: {
+    callsign: callsign ?? 'UNKNOWN',
+    airline: (prefix && airlineName(prefix)) || 'UNKNOWN',
+    aircraftType: points.map((p) => p.ac.t).find(Boolean) ?? 'UNKNOWN',
+    origin: 'UNKNOWN',
+    destination: 'UNKNOWN',
+  },
+  recording: {
+    date: new Date(points[0].ts).toISOString(),
+    source: 'ADSB.lol globe_history (ODbL)',
+    sourceUrl: archiveUrl,
+    newsSourceUrl: opts['source-link'] ?? null,
+  },
+  expectedInsight: { type: opts.expect ?? null },
+  points: flightPoints,
+};
+writeFileSync(join(templateDir, `${opts.id}.json`), JSON.stringify(template, null, 2) + '\n');
+console.log(`[import] wrote ${flightPoints.length} points → data/recorded/${opts.id}.json`);
