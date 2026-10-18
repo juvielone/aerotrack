@@ -1,6 +1,17 @@
-import { postJSON } from '../api';
+import { postJSON, type RecordingInfo } from '../api';
 import { fmtDate, fmtTimeSec, zoneName } from '../format';
 import { useStore } from '../store';
+
+/** Picker labels for demo examples, by the pattern they show. */
+const PATTERN_LABEL: Record<string, string> = {
+  GO_AROUND: 'Go-around',
+  POSSIBLE_CIRCLING: 'Holding',
+  RAPID_DESCENT: 'Rapid descent',
+  SQUAWK_7700: 'Emergency 7700',
+  SQUAWK_7600: 'Radio failure 7600',
+};
+
+const optionLabel = (r: RecordingInfo) => `${r.expectedInsight ? `${PATTERN_LABEL[r.expectedInsight] ?? r.expectedInsight} · ` : ''}${r.title} (${fmtDate(r.startTs)})`;
 
 export function ReplayBar() {
   const recordings = useStore((s) => s.recordings);
@@ -26,11 +37,20 @@ export function ReplayBar() {
   return (
     <div className="replaybar">
       <select className="rec-select" value={recordingId ?? ''} onChange={(e) => setRecording(e.target.value)} aria-label="Recording">
-        {recordings.map((r) => (
-          <option key={r.id} value={r.id}>
-            {r.title} ({fmtDate(r.startTs)})
-          </option>
-        ))}
+        {[
+          ['Example flights', recordings.filter((r) => r.expectedInsight)],
+          ['Captures', recordings.filter((r) => !r.expectedInsight)],
+        ].map(([group, list]) =>
+          (list as RecordingInfo[]).length ? (
+            <optgroup key={group as string} label={group as string}>
+              {(list as RecordingInfo[]).map((r) => (
+                <option key={r.id} value={r.id}>
+                  {optionLabel(r)}
+                </option>
+              ))}
+            </optgroup>
+          ) : null,
+        )}
       </select>
       {replay && (
         <>
@@ -41,16 +61,25 @@ export function ReplayBar() {
               <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M8 5v14l11-7z" /></svg>
             )}
           </button>
-          <input
-            className="scrubber"
-            type="range"
-            min={replay.startTs}
-            max={replay.endTs}
-            step={1000}
-            value={replay.t}
-            onChange={(e) => control('seek', Number(e.target.value))}
-            aria-label="Replay position"
-          />
+          <span className="scrubber-wrap">
+            <input
+              className="scrubber"
+              type="range"
+              min={replay.startTs}
+              max={replay.endTs}
+              step={1000}
+              value={replay.t}
+              onChange={(e) => control('seek', Number(e.target.value))}
+              aria-label="Replay position"
+            />
+            {recording?.focus && replay.endTs > replay.startTs && (
+              <span
+                className="scrubber-mark"
+                style={{ left: `${((recording.focus.ts - replay.startTs) / (replay.endTs - replay.startTs)) * 100}%` }}
+                title="The pattern shows here"
+              />
+            )}
+          </span>
           <span className="replay-time">
             {fmtTimeSec(replay.t)} <small>{zoneName(replay.t)}</small>
           </span>
@@ -62,6 +91,18 @@ export function ReplayBar() {
             ))}
           </select>
         </>
+      )}
+      {recording?.focus && (
+        <button
+          className="chip"
+          onClick={() => {
+            control('seek', recording.focus!.ts);
+            control('pause');
+            set({ pendingHex: recording.focus!.hex });
+          }}
+        >
+          ↳ Jump to event
+        </button>
       )}
       {recording?.highlights?.length ? (
         <div className="highlights">

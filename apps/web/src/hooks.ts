@@ -24,7 +24,7 @@ export function useStream() {
   const set = useStore((s) => s.set);
 
   useEffect(() => {
-    const url = mode === 'live' ? '/api/live/stream' : recordingId ? `/api/replay/${encodeURIComponent(recordingId)}/stream?speed=8` : null;
+    const url = mode === 'live' ? '/api/live/stream' : recordingId ? `/api/replay/${encodeURIComponent(recordingId)}/stream` : null;
     if (!url) {
       set({ connection: 'idle' });
       return;
@@ -47,7 +47,8 @@ export function useStream() {
     });
     es.addEventListener('replay', (e) => {
       const { recording, state } = JSON.parse((e as MessageEvent).data) as { recording: RecordingInfo; state: ReplayState };
-      set({ recording, replay: state });
+      // Demo examples open with their aircraft selected, so the Insights panel and timeline are already showing.
+      set({ recording, replay: state, ...(recording.focus && { pendingHex: recording.focus.hex }) });
     });
     es.addEventListener('disabled', (e) => {
       const { message } = JSON.parse((e as MessageEvent).data);

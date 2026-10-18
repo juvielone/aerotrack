@@ -1,4 +1,5 @@
 // Adapted from teamate-src/detector/analyseFlight.ts
+import { AIRPORTS } from '../airports';
 import { config } from '../config';
 import { explainSignal, LAST_SEEN_ON_GROUND, minutesAgo } from '../explain';
 import type { EventEvidence, EventType, FlightEvent, GapCause, SignalState } from '../types';
@@ -11,7 +12,8 @@ export interface AnalyseInput {
   signal?: SignalState;
 }
 
-const fmtFt = (ft: number | null | undefined) => (ft == null ? '?' : `${Math.round(ft).toLocaleString('en-AU')} ft`);
+// ADS-B altitude is pressure altitude, which can read below zero near the runway; don't show that as a height.
+const fmtFt = (ft: number | null | undefined) => (ft == null ? '?' : ft < 100 ? 'near ground level' : `${Math.round(ft).toLocaleString('en-AU')} ft`);
 const fmtRate = (fpm: number) => `${(Math.round(Math.abs(fpm) / 100) * 100).toLocaleString('en-AU')} ft/min`;
 const fmtDur = (ms: number) => minutesAgo(ms / 1000);
 
@@ -133,15 +135,18 @@ function fromEvent(e: FlightEvent, type: InsightType, status: FlightInsight['sta
         explanation: 'Descending unusually quickly. This can happen for several reasons.',
         limitations: "Aerotrack can't tell the cause of the descent from tracking data alone.",
       };
-    case 'go-around':
+    case 'go-around': {
+      const elev = AIRPORTS.find((a) => a.code === ev.airport)?.elevFt ?? 0;
+      const low = ev.lowestAlt != null && ev.lowestAlt - elev < 300 ? 'within a few hundred feet of the runway' : fmtFt(ev.lowestAlt);
       return {
         ...base,
         confidence: 'high',
         title: 'Go-around',
-        observed: `Descended to ${fmtFt(ev.lowestAlt)} near ${ev.airport ?? 'an airport'}, climbed away, then landed on a later approach.`,
+        observed: `Descended to ${low} at ${ev.airport ?? 'an airport'}, climbed away, then landed on a later approach.`,
         explanation: 'This is called a go-around and is a routine procedure.',
         limitations: "Tracking data can't show why the first landing attempt was discontinued.",
       };
+    }
     case 'go-around-hint':
       return {
         ...base,

@@ -127,6 +127,14 @@ describe('insights: wording and evidence', () => {
     }
   });
 
+  it('never shows a negative pressure altitude as a height', () => {
+    const now = T0 + 310 * S;
+    const [ga] = analyseFlight({ events: [ev('go-around', 0, 300, false, { airport: 'SYD', lowestAlt: -225 })], signal: ok }, now);
+    expect(ga.observed).toBe('Descended to within a few hundred feet of the runway at SYD, climbed away, then landed on a later approach.');
+    const [d] = analyseFlight({ events: [ev('descent', 0, 300, true, { startAlt: 2775, endAlt: -225 })], signal: ok }, T0 + 300 * S);
+    expect(d.observed).toBe('Descended from 2,775 ft to near ground level over 5 min.');
+  });
+
   it('labels circling as possible and carries its confidence', () => {
     const now = T0 + 300 * S;
     const [c] = analyseFlight({ events: [ev('holding', 0, 300, true, { degrees: 500, confidence: 'high', startAlt: 9000 })], signal: ok }, now);

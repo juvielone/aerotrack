@@ -13,7 +13,7 @@ const DIR = join(__dirname, '../../../data/recorded');
 interface RecordedFlight {
   id: string;
   title: string;
-  flight: { callsign: string };
+  flight: { callsign: string; hex?: string };
   expectedInsight: { type: InsightType | null };
   points: FlightPoint[];
 }
@@ -29,7 +29,7 @@ function toPolls(f: RecordedFlight): RawPoll[] {
       now: p.timestamp,
       ac: [
         {
-          hex: f.id,
+          hex: f.flight.hex ?? f.id,
           flight: callsign,
           lat: p.lat,
           lon: p.lon,

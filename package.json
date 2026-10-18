@@ -14,6 +14,7 @@
     "typecheck": "tsc -p packages/core --noEmit && tsc -p apps/server --noEmit && tsc -p apps/web --noEmit",
     "record": "tsx apps/server/scripts/record.ts",
     "import:trace": "tsx apps/server/scripts/importTrace.ts",
+    "find:patterns": "tsx apps/server/scripts/findPatterns.ts",
     "build:coverage": "tsx apps/server/scripts/buildCoverage.ts",
     "routes:prefetch": "tsx apps/server/scripts/prefetchRoutes.ts"
   },

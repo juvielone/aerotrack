@@ -1146,3 +1146,25 @@ code {
   color: var(--text-2);
   font-size: 12.5px;
 }
+
+.scrubber-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 120px;
+}
+.scrubber-wrap .scrubber {
+  width: 100%;
+}
+.scrubber-mark {
+  position: absolute;
+  top: 50%;
+  width: 3px;
+  height: 14px;
+  margin-left: -1.5px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
