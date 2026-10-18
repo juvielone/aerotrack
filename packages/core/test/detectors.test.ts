@@ -79,6 +79,26 @@ describe('rapid descent', () => {
     expect(ev.some((e) => e.type === 'descent')).toBe(false);
   });
 
+  it('does not flag a normal descent (~1,800 fpm) as rapid', () => {
+    // Synthetic: typical descent from cruise.
+    const obs = series(60, 5, (k) => ({ alt: 30000 - k * 150, baroRate: -1800 }));
+    expect(has(obs, 'rapid-descent')).toBe(false);
+    expect(has(obs, 'descent')).toBe(true);
+  });
+
+  it('needs at least 2,500 ft of real altitude loss', () => {
+    // Synthetic: steep for 35 s but only ~2,300 ft lost.
+    const obs = series(20, 5, (k) => ({ alt: 20000 - Math.min(Math.max(0, k - 5), 7) * 333, baroRate: k > 5 && k <= 12 ? -6000 : 0 }));
+    expect(has(obs, 'rapid-descent')).toBe(false);
+  });
+
+  it('is not triggered by a single-sample altitude spike', () => {
+    // Synthetic: level cruise with one reading 8,000 ft too low.
+    const obs = series(20, 5, (k) => ({ alt: k === 10 ? 27000 : 35000, baroRate: 0 }));
+    expect(types(obs)).toContain('glitch');
+    expect(has(obs, 'rapid-descent')).toBe(false);
+  });
+
   it('ignores a bad baro_rate when altitude is not actually dropping', () => {
     const obs = series(20, 5, () => ({ alt: 20000, baroRate: -7000 }));
     expect(has(obs, 'rapid-descent')).toBe(false);

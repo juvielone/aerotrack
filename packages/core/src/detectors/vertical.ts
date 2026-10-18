@@ -66,9 +66,12 @@ export function detectClimbDescent(obs: Observation[], rates: (number | null)[])
   return out;
 }
 
-/** Rapid descent (PRD §4): faster than ~5,000 fpm across ≥ 3 consistent observations for ≥ 30 s. */
+/**
+ * Rapid descent (PRD §4): faster than ~5,000 fpm across ≥ 3 consistent observations for ≥ 30 s,
+ * losing at least `minLossFt` of real altitude. Glitch-rejected readings are skipped, so this runs on the cleaned series.
+ */
 export function detectRapidDescent(obs: Observation[], rates: (number | null)[]): Detected[] {
-  const { rateFpm, minObs, minSec } = config.rapidDescent;
+  const { rateFpm, minObs, minSec, minLossFt } = config.rapidDescent;
   const out: Detected[] = [];
   let runStart = -1;
   let runEnd = -1;
@@ -81,7 +84,7 @@ export function detectRapidDescent(obs: Observation[], rates: (number | null)[])
     const lost = (a.alt as number) - (b.alt as number);
     // Altitude must actually drop consistently with the rate (guards against a bad baro_rate).
     const actualFpm = dur > 0 ? lost / (dur / 60) : 0;
-    if (count >= minObs && dur >= minSec && actualFpm >= rateFpm * 0.7) {
+    if (count >= minObs && dur >= minSec && lost >= minLossFt && actualFpm >= rateFpm * 0.7) {
       out.push({
         type: 'rapid-descent',
         severity: 'warning',
