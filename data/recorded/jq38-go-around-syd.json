@@ -19,6 +19,9 @@
   "expectedInsight": {
     "type": "GO_AROUND"
   },
+  "mustNotShow": [
+    "POSSIBLE_CIRCLING"
+  ],
   "focus": {
     "hex": "7c4a45",
     "ts": 1750883931500

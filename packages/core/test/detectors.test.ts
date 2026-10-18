@@ -151,6 +151,74 @@ describe('holding / circling', () => {
     const obs = series(96, 5, (k) => ({ track: (k * 15) % 360, alt: 9000, gs: 200, lat: SYD.lat - 1 + k * 0.005, lon: SYD.lon }));
     expect(has(obs, 'holding')).toBe(false);
   });
+
+  it('still detects a high-level racetrack hold with 1.5-minute legs', () => {
+    // Synthetic: FL300 hold, 60 s 180° turns and 90 s straight legs, two laps.
+    const obs = path(120, 5, (k) => {
+      const t = k % 60; // one lap = 60 samples = 5 min
+      const lap = Math.floor(k / 60) * 360;
+      const heading = t < 12 ? t * 15 : t < 30 ? 180 : t < 42 ? 180 + (t - 30) * 15 : 360;
+      return { track: (lap + heading) % 360, alt: 30000, gs: 240 };
+    });
+    expect(has(obs, 'holding')).toBe(true);
+  });
+});
+
+/** Heading profile from (seconds, degrees per second) segments: a straight leg is a rate of 0. */
+function headings(segments: [number, number][], start = 0): (k: number) => number {
+  return (k) => {
+    let t = k * 5;
+    let h = start;
+    for (const [dur, rate] of segments) {
+      const d = Math.min(t, dur);
+      h += d * rate;
+      t -= d;
+      if (t <= 0) break;
+    }
+    return ((h % 360) + 360) % 360;
+  };
+}
+
+describe('holding look-alikes before landing (synthetic): must NOT be circling', () => {
+  it('a normal approach pattern: downwind, base, final (~180°)', () => {
+    const h = headings([[90, 0], [30, -3], [40, 0], [30, -3], [200, 0]], 340);
+    const obs = path(78, 5, (k) => ({ track: h(k), alt: Math.max(100, k < 30 ? 3000 : 3000 - (k - 30) * 60), gs: k < 30 ? 210 : 160 }), { lat: SYD.lat - 0.15, lon: SYD.lon - 0.1 });
+    expect(has(obs, 'holding')).toBe(false);
+  });
+
+  it('a long winding arrival with three 90° turns the same way', () => {
+    const h = headings([[60, 0], [30, 3], [45, 0], [30, 3], [45, 0], [30, 3], [120, 0]], 90);
+    const obs = path(72, 5, (k) => ({ track: h(k), alt: 6000, gs: 250 }));
+    expect(has(obs, 'holding')).toBe(false);
+  });
+
+  it('S-turns that cancel out', () => {
+    const h = headings([[20, 3], [40, -3], [40, 3], [40, -3], [40, 3], [40, -3], [40, 3], [40, -3]], 0);
+    const obs = path(64, 5, (k) => ({ track: h(k), alt: 8000, gs: 230 }));
+    expect(has(obs, 'holding')).toBe(false);
+  });
+
+  it('a single 360° orbit for spacing is a turn, not circling', () => {
+    // Rate-one turn (3°/s): 360° in 2 min, level, with straight flight either side.
+    const h = headings([[60, 0], [120, 3], [120, 0]], 160);
+    const obs = path(60, 5, (k) => ({ track: h(k), alt: 4000, gs: 200 }));
+    const ev = detectEvents(obs, ctx());
+    expect(ev.some((e) => e.type === 'holding')).toBe(false);
+    const turn = ev.find((e) => e.type === 'turn');
+    expect(turn?.evidence.degrees).toBeGreaterThanOrEqual(330);
+  });
+
+  it('a low circling approach to another runway (270° while descending)', () => {
+    const h = headings([[30, 0], [90, -3], [60, 0]], 340);
+    const obs = path(36, 5, (k) => ({ track: h(k), alt: 1500 - k * 28, gs: 150 }), { lat: SYD.lat - 0.05, lon: SYD.lon });
+    expect(has(obs, 'holding')).toBe(false);
+  });
+
+  it('a departure turnback (180° while climbing)', () => {
+    const h = headings([[60, 0], [60, 3], [180, 0]], 340);
+    const obs = path(60, 5, (k) => ({ track: h(k), alt: 3000 + k * 150, gs: 250 }));
+    expect(has(obs, 'holding')).toBe(false);
+  });
 });
 
 describe('go-around', () => {

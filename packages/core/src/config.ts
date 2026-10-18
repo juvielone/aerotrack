@@ -45,6 +45,12 @@ export const config = {
     maxProgressRatio: 0.4,
     /** ...and comes back within this distance of an earlier position in the window (teammate reference). */
     returnWithinKm: 8,
+    /** A racetrack has a straight leg this long between turns (thinned archive traces: measured by time). */
+    straightLegSec: 30,
+    /** ...with at least this much turning on each side of the leg, inside the window. */
+    straightLegTurnDeg: 90,
+    /** Without a straight leg, only continuous turning of 2+ laps counts: a single 360° orbit is a turn. */
+    orbitOnlyMinDeg: 660,
     /** High confidence when it turned this much with this little progress. */
     highConfidenceDeg: 450,
     highConfidenceRatio: 0.25,

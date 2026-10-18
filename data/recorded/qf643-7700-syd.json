@@ -19,6 +19,9 @@
   "expectedInsight": {
     "type": "SQUAWK_7700"
   },
+  "mustNotShow": [
+    "POSSIBLE_CIRCLING"
+  ],
   "focus": {
     "hex": "7c6de9",
     "ts": 1740952584540

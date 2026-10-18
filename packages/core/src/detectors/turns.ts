@@ -37,24 +37,58 @@ function steps(obs: Observation[], staleSec: number): Step[][] {
   return runs;
 }
 
+/** Straight stretches of a run: [first straight step, last straight step], with their duration. */
+function straightLegs(run: Step[]): { from: number; to: number; ms: number }[] {
+  const { noiseDeg } = config.turn;
+  const legs: { from: number; to: number; ms: number }[] = [];
+  for (let k = 1; k < run.length; k++) {
+    if (Math.abs(run[k].d) >= noiseDeg) continue;
+    const last = legs[legs.length - 1];
+    if (last && last.to === k - 1) {
+      last.to = k;
+      last.ms += run[k].ts - run[k - 1].ts;
+    } else legs.push({ from: k, to: k, ms: run[k].ts - run[k - 1].ts });
+  }
+  return legs;
+}
+
+/** A racetrack: a long-enough straight leg inside the window with real turning on both sides of it. */
+function hasRacetrackLeg(legs: ReturnType<typeof straightLegs>, cum: number[], i: number, j: number): boolean {
+  const { straightLegSec, straightLegTurnDeg } = config.holding;
+  return legs.some(
+    (l) =>
+      l.from > i &&
+      l.to <= j &&
+      l.ms >= straightLegSec * 1000 &&
+      Math.abs(cum[l.from - 1] - cum[i]) >= straightLegTurnDeg &&
+      Math.abs(cum[j] - cum[l.to]) >= straightLegTurnDeg,
+  );
+}
+
 /**
  * Possible holding / circling (PRD §4): cumulative track change ≥ 300° within ~6 min at a roughly level altitude,
  * with little forward progress and a return near an earlier position (path-shape checks from the teammate reference).
+ * It must look like a racetrack (a straight leg between turns) or be 2+ continuous laps: a single 360° orbit,
+ * e.g. for spacing before landing, is reported as a turn instead.
  */
 export function detectHolding(obs: Observation[], staleSec: number): Detected[] {
-  const { minDeg, windowSec, maxAltSpreadFt } = config.holding;
+  const { minDeg, windowSec, maxAltSpreadFt, orbitOnlyMinDeg } = config.holding;
   const out: Detected[] = [];
   for (const run of steps(obs, staleSec)) {
     const cum: number[] = [];
     let c = 0;
     for (const s of run) cum.push((c += s.d));
+    const legs = straightLegs(run);
     const windows: [number, number][] = [];
     for (let j = 0; j < run.length; j++) {
       for (let i = j - 1; i >= 0 && run[j].ts - run[i].ts <= windowSec * 1000; i--) {
-        if (Math.abs(cum[j] - cum[i]) >= minDeg) {
-          const alts = run.slice(i, j + 1).map((s) => obs[s.i]).filter((o) => o.alt !== null && !o.glitch).map((o) => o.alt as number);
-          const level = alts.length && Math.max(...alts) - Math.min(...alts) <= maxAltSpreadFt;
-          if (level && looksLikeCircling(circlingShape(run.slice(i, j + 1).map((s) => obs[s.i])))) windows.push([i, j]);
+        const deg = Math.abs(cum[j] - cum[i]);
+        if (deg < minDeg) continue;
+        if (deg < orbitOnlyMinDeg && !hasRacetrackLeg(legs, cum, i, j)) continue;
+        const alts = run.slice(i, j + 1).map((s) => obs[s.i]).filter((o) => o.alt !== null && !o.glitch).map((o) => o.alt as number);
+        const level = alts.length && Math.max(...alts) - Math.min(...alts) <= maxAltSpreadFt;
+        if (level && looksLikeCircling(circlingShape(run.slice(i, j + 1).map((s) => obs[s.i])))) {
+          windows.push([i, j]);
           break;
         }
       }

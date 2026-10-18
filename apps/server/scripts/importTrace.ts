@@ -70,28 +70,33 @@ if (!points.length) throw new Error('No points in the --from/--to window');
 const polls = toPolls(points);
 const staleSec = Number(opts['stale-sec'] ?? 120);
 
-// Verification gate: the snippet must show the expected pattern through the same pipeline the app uses.
+// Verification gate: through the same pipeline the app uses, the snippet must show the --expect pattern and must
+// never show any --must-not pattern (look-alike regressions, e.g. a normal approach that must not read as circling).
 let focus: { hex: string; ts: number } | undefined;
-if (opts.expect) {
-  const expect = opts.expect as InsightType;
+const expect = opts.expect as InsightType | undefined;
+const mustNot = (opts['must-not'] ?? '').split(',').filter(Boolean) as InsightType[];
+if (expect || mustNot.length) {
   const p = new Pipeline({ mode: 'recorded', staleSec });
+  const unwanted = new Set<InsightType>();
   for (const poll of polls) {
     p.ingest(poll);
     for (const s of p.store.current()) {
-      if (focus) break;
-      // Focus on the moment the Insights panel would actually show it (after its show gate), not first detection.
-      const shown = analyseFlight({ events: s.events, signal: p.signal(s, poll.now, false) }, poll.now).some(
-        (i) => i.type === expect && selectInsight([i], poll.now) !== null,
-      );
-      if (shown) focus = { hex: s.hex, ts: poll.now };
+      // "Shown" = what the Insights panel would actually show (after its show gate), not first detection.
+      const shown = analyseFlight({ events: s.events, signal: p.signal(s, poll.now, false) }, poll.now).filter((i) => selectInsight([i], poll.now) !== null);
+      if (expect && !focus && shown.some((i) => i.type === expect)) focus = { hex: s.hex, ts: poll.now };
+      for (const i of shown) if (mustNot.includes(i.type)) unwanted.add(i.type);
     }
-    if (focus) break;
   }
-  if (!focus) {
+  if (expect && !focus) {
     console.error(`[import] Aerotrack does not detect ${expect} in this snippet. Nothing written. Check the window with npm run find:patterns.`);
     process.exit(2);
   }
-  console.log(`[import] verified: ${expect} shows at ${new Date(focus.ts).toISOString()}`);
+  if (unwanted.size) {
+    console.error(`[import] Aerotrack shows ${[...unwanted].join(', ')} in this snippet, which --must-not excludes. Nothing written.`);
+    process.exit(2);
+  }
+  if (focus) console.log(`[import] verified: ${expect} shows at ${new Date(focus.ts).toISOString()}`);
+  if (mustNot.length) console.log(`[import] verified: never shows ${mustNot.join(', ')}`);
 }
 
 const durationSec = (points[points.length - 1].ts - points[0].ts) / 1000;
@@ -168,6 +173,7 @@ const template = {
     newsSourceUrl: opts['source-link'] ?? null,
   },
   expectedInsight: { type: opts.expect ?? null },
+  ...(mustNot.length && { mustNotShow: mustNot }),
   ...(focus && { focus }),
   ...(opts['reported-cause'] && { reportedCause: opts['reported-cause'] }),
   points: flightPoints,
