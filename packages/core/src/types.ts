@@ -86,6 +86,9 @@ export interface EventEvidence {
   gapCause?: GapCause;
   lat?: number;
   lon?: number;
+  /** Circling: displacement / path distance over the episode. */
+  progressRatio?: number;
+  confidence?: 'medium' | 'high';
 }
 
 export interface FlightEvent {

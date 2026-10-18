@@ -1,6 +1,7 @@
 import { config } from '../config';
 import { trackDelta } from '../geo';
 import type { Observation } from '../types';
+import { circlingConfidence, circlingShape, looksLikeCircling } from './circling';
 import { type Detected, sec } from './common';
 
 interface Step {
@@ -37,7 +38,8 @@ function steps(obs: Observation[], staleSec: number): Step[][] {
 }
 
 /**
- * Possible holding / circling (PRD §4): cumulative track change ≥ 300° within ~6 min at a roughly level altitude.
+ * Possible holding / circling (PRD §4): cumulative track change ≥ 300° within ~6 min at a roughly level altitude,
+ * with little forward progress and a return near an earlier position (path-shape checks from the teammate reference).
  */
 export function detectHolding(obs: Observation[], staleSec: number): Detected[] {
   const { minDeg, windowSec, maxAltSpreadFt } = config.holding;
@@ -51,7 +53,8 @@ export function detectHolding(obs: Observation[], staleSec: number): Detected[] 
       for (let i = j - 1; i >= 0 && run[j].ts - run[i].ts <= windowSec * 1000; i--) {
         if (Math.abs(cum[j] - cum[i]) >= minDeg) {
           const alts = run.slice(i, j + 1).map((s) => obs[s.i]).filter((o) => o.alt !== null && !o.glitch).map((o) => o.alt as number);
-          if (alts.length && Math.max(...alts) - Math.min(...alts) <= maxAltSpreadFt) windows.push([i, j]);
+          const level = alts.length && Math.max(...alts) - Math.min(...alts) <= maxAltSpreadFt;
+          if (level && looksLikeCircling(circlingShape(run.slice(i, j + 1).map((s) => obs[s.i])))) windows.push([i, j]);
           break;
         }
       }
@@ -71,6 +74,7 @@ export function detectHolding(obs: Observation[], staleSec: number): Detected[] 
       const first = obs[run[a].i];
       const last = obs[run[b].i];
       const degrees = Math.abs(cum[b] - cum[a]);
+      const shape = circlingShape(run.slice(a, b + 1).map((s) => obs[s.i]))!;
       out.push({
         type: 'holding',
         severity: 'notice',
@@ -86,6 +90,8 @@ export function detectHolding(obs: Observation[], staleSec: number): Detected[] 
           direction: cum[b] - cum[a] > 0 ? 'right' : 'left',
           durationSec: sec(last.ts - first.ts),
           obsCount: b - a + 1,
+          progressRatio: Math.round(shape.progressRatio * 100) / 100,
+          confidence: circlingConfidence(degrees, shape),
         },
       });
     }

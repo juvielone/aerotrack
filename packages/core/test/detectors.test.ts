@@ -103,6 +103,20 @@ describe('holding / circling', () => {
     const obs = path(30, 5, (k) => ({ track: (k * 15) % 360, alt: 20000 - k * 300, gs: 250 }));
     expect(has(obs, 'holding')).toBe(false);
   });
+
+  it('reports progress ratio and confidence as evidence', () => {
+    // Synthetic: tight level orbits, 3° per second.
+    const obs = path(96, 5, (k) => ({ track: (k * 15) % 360, alt: 9000, gs: 200 }));
+    const hold = detectEvents(obs, ctx()).find((e) => e.type === 'holding');
+    expect(hold?.evidence.progressRatio).toBeLessThanOrEqual(0.4);
+    expect(hold?.evidence.confidence).toBe('high');
+  });
+
+  it('rejects track rotation when the position keeps making progress', () => {
+    // Synthetic: track field spins, but positions move steadily north (e.g. a bad track source).
+    const obs = series(96, 5, (k) => ({ track: (k * 15) % 360, alt: 9000, gs: 200, lat: SYD.lat - 1 + k * 0.005, lon: SYD.lon }));
+    expect(has(obs, 'holding')).toBe(false);
+  });
 });
 
 describe('go-around', () => {
